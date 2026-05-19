@@ -6,20 +6,29 @@ SongTwin is a consumer Spotify web app for finding songs similar to a playlist o
 
 - Spotify login with PKCE and encrypted HTTP-only session cookies.
 - Choose one of your Spotify playlists or search for a single song.
-- Generate ranked song matches from Last.fm `track.getSimilar` co-listening data.
+- Generate ranked song matches from listener-overlap data.
+- Use Last.fm `track.getSimilar` when a Last.fm API key is configured.
+- Fall back to ListenBrainz collaborative-listening data when Last.fm is not configured.
 - Map recommendation candidates back to Spotify tracks so users can open them directly.
 - Demo mode for trying the interface before credentials are configured.
 - Clear fallback labeling when Last.fm is not configured.
 
 ## API Reality
 
-Spotify announced on November 27, 2024 that new Web API use cases can no longer access several endpoints and features, including recommendations, related artists, audio features, and audio analysis. SongTwin therefore uses Spotify for identity and catalog data, and Last.fm for the “people who liked this also liked” signal.
+Spotify announced on November 27, 2024 that new Web API use cases can no longer access several endpoints and features, including recommendations, related artists, audio features, and audio analysis. Spotify also does not expose a public global graph of who liked which tracks.
+
+SongTwin therefore uses Spotify for identity, playlist access, search, and track links. The “people who liked/listened to this also liked/listened to” signal comes from collaborative-listening sources:
+
+- Last.fm `track.getSimilar` when `LASTFM_API_KEY` is configured.
+- ListenBrainz Labs similar recordings as a no-key collaborative fallback.
+- Spotify artist catalog proximity only as a last-resort fallback, clearly labeled in the UI.
 
 References:
 
 - [Spotify Web API changes](https://developer.spotify.com/blog/2024-11-27-changes-to-the-web-api)
 - [Spotify Authorization Code with PKCE](https://developer.spotify.com/documentation/web-api/tutorials/code-pkce-flow)
 - [Last.fm track.getSimilar](https://www.last.fm/api/show/track.getSimilar)
+- [ListenBrainz Labs similar recordings](https://labs.api.listenbrainz.org/similar-recordings)
 
 ## Local Setup
 
@@ -42,7 +51,8 @@ cp .env.example .env.local
 SPOTIFY_CLIENT_ID=your_spotify_client_id
 SPOTIFY_REDIRECT_URI=http://127.0.0.1:3000/api/auth/callback
 SESSION_SECRET=your_long_random_secret
-LASTFM_API_KEY=your_lastfm_api_key
+LASTFM_API_KEY=your_lastfm_api_key_optional_but_recommended
+MUSICBRAINZ_USER_AGENT=SongTwin/0.1 (you@example.com)
 ```
 
 5. Start the app:
@@ -66,4 +76,4 @@ npm run build
 
 - Spotify tokens stay server-side.
 - Changing `SESSION_SECRET` invalidates existing sessions.
-- Without `LASTFM_API_KEY`, SongTwin still runs, but it labels recommendations as fallback matches.
+- Without `LASTFM_API_KEY`, SongTwin tries ListenBrainz first. If neither collaborative source returns matches, it labels recommendations as fallback matches.

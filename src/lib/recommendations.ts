@@ -1,5 +1,6 @@
 import { fetchArtistTopTracks, searchBestTrack, searchTracks } from "./spotify";
 import { getSimilarTracks, lastFmConfigured } from "./lastfm";
+import { findMusicBrainzRecordingMbid, getListenBrainzSimilarTracks } from "./listenbrainz";
 import type { Recommendation, RecommendationResponse, SimplifiedTrack, SpotifyTokenSession } from "./types";
 
 type CandidateBucket = {
@@ -38,6 +39,22 @@ export async function recommendFromSeeds(
   }
 
   if (!lastFmConfigured()) {
+    const listenBrainz = await listenBrainzRecommendations(session, seeds, limit);
+    if (listenBrainz.length > 0) {
+      return {
+        recommendations: listenBrainz,
+        sourceSummary: {
+          provider: "listenbrainz",
+          lastFmConfigured: false,
+          seedsAnalyzed: Math.min(seeds.length, 4),
+          spotifyMatches: listenBrainz.filter((track) => track.matchedOnSpotify).length,
+          notes: [
+            "Using ListenBrainz collaborative listening because LASTFM_API_KEY is not configured.",
+          ],
+        },
+      };
+    }
+
     const fallback = await artistCatalogFallback(session, seeds, limit);
     return {
       recommendations: fallback,
@@ -47,7 +64,7 @@ export async function recommendFromSeeds(
         seedsAnalyzed: seeds.length,
         spotifyMatches: fallback.length,
         notes: [
-          "LASTFM_API_KEY is missing, so results use artist catalog proximity instead of co-listening overlap.",
+          "No co-listening source returned matches, so results use artist catalog proximity.",
         ],
       },
     };
@@ -162,6 +179,107 @@ export async function recommendFromSeeds(
       notes,
     },
   };
+}
+
+async function listenBrainzRecommendations(
+  session: SpotifyTokenSession,
+  seeds: SimplifiedTrack[],
+  limit: number,
+) {
+  const seedMap = new Map<string, SimplifiedTrack>();
+
+  for (const seed of seeds.slice(0, 4)) {
+    const mbid = await findMusicBrainzRecordingMbid({
+      name: seed.name,
+      artistName: seed.artistName,
+    }).catch(() => null);
+
+    if (mbid) {
+      seedMap.set(mbid, seed);
+    }
+  }
+
+  const similar = await getListenBrainzSimilarTracks([...seedMap.keys()]).catch(() => []);
+  if (similar.length === 0) {
+    return [];
+  }
+
+  const bucketMap = new Map<
+    string,
+    {
+      name: string;
+      artistName: string;
+      score: number;
+      imageUrl?: string;
+      supportSeeds: Set<string>;
+    }
+  >();
+
+  for (const track of similar) {
+    if (isSeed(track, seeds)) {
+      continue;
+    }
+
+    const key = trackKey(track);
+    const bucket =
+      bucketMap.get(key) ??
+      {
+        name: track.name,
+        artistName: track.artistName,
+        score: 0,
+        imageUrl: track.imageUrl,
+        supportSeeds: new Set<string>(),
+      };
+    bucket.score += track.score;
+    const seed = seedMap.get(track.seedMbid);
+    if (seed) {
+      bucket.supportSeeds.add(seed.name);
+    }
+    bucketMap.set(key, bucket);
+  }
+
+  const rankedBuckets = [...bucketMap.values()].sort((left, right) => {
+    return (
+      right.score - left.score ||
+      right.supportSeeds.size - left.supportSeeds.size ||
+      left.name.localeCompare(right.name)
+    );
+  });
+  const maxScore = rankedBuckets[0]?.score || 1;
+
+  const mapped = await Promise.all(
+    rankedBuckets.slice(0, Math.max(limit * 2, 30)).map(async (bucket) => {
+      const spotifyTrack = await searchBestTrack(session, {
+        name: bucket.name,
+        artistName: bucket.artistName,
+      }).catch(() => null);
+      return { bucket, spotifyTrack };
+    }),
+  );
+
+  return mapped
+    .map(({ bucket, spotifyTrack }) => {
+      const track = spotifyTrack ?? {
+        name: bucket.name,
+        artistName: bucket.artistName,
+        imageUrl: bucket.imageUrl,
+      };
+      const normalizedScore = Math.round((bucket.score / maxScore) * 100);
+
+      return {
+        ...track,
+        score: normalizedScore,
+        confidence: Math.min(95, Math.round(normalizedScore * 0.78 + bucket.supportSeeds.size * 8)),
+        support: Math.max(bucket.supportSeeds.size, 1),
+        signal: "listenbrainz-collaborative" as const,
+        reason: "ListenBrainz collaborative listening candidate mapped back to Spotify catalog.",
+        seedNames: [...bucket.supportSeeds],
+        matchedOnSpotify: Boolean(spotifyTrack?.id),
+      };
+    })
+    .filter((track) => !isSeed(track, seeds))
+    .slice(0, limit)
+    .map((track, index) => ({ ...track, rank: index + 1 }));
 }
 
 async function artistCatalogFallback(

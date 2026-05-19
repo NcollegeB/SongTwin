@@ -557,6 +557,8 @@ function SourceBadge({ summary }: { summary: RecommendationResponse["sourceSumma
   const label =
     summary.provider === "lastfm"
       ? "Co-listening"
+      : summary.provider === "listenbrainz"
+        ? "Listener graph"
       : summary.provider === "demo"
         ? "Demo graph"
         : "Fallback";
@@ -580,6 +582,10 @@ function signalLabel(signal: Recommendation["signal"]) {
     return "Listeners";
   }
 
+  if (signal === "listenbrainz-collaborative") {
+    return "Listeners";
+  }
+
   if (signal === "demo-co-listening") {
     return "Demo";
   }
@@ -589,7 +595,7 @@ function signalLabel(signal: Recommendation["signal"]) {
 
 function signalClass(signal: Recommendation["signal"]) {
   const base = "inline-flex rounded-lg px-2 py-1 text-[12px] font-semibold";
-  if (signal === "lastfm-co-listening") {
+  if (signal === "lastfm-co-listening" || signal === "listenbrainz-collaborative") {
     return `${base} bg-[#e8f8ed] text-[#106a32]`;
   }
 

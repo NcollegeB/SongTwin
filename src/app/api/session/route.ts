@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
   const setupSteps = [
     !spotifyConfigured() ? "Add SPOTIFY_CLIENT_ID to .env.local." : "",
     !lastFmConfigured()
-      ? "Add LASTFM_API_KEY to enable listener-overlap recommendations."
+      ? "LASTFM_API_KEY is optional; without it SongTwin uses ListenBrainz for listener-overlap matches."
       : "",
   ].filter(Boolean);
 
