@@ -1,8 +1,16 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f5f7f1;
+  --foreground: #19211d;
+  --surface: #ffffff;
+  --line: #dfe6d8;
+  --muted: #6b746c;
+  --accent: #1db954;
+  --teal: #0b6b62;
+  --coral: #d95b43;
+  --blue: #315a7d;
+  --amber: #bc7a1d;
 }
 
 @theme inline {
@@ -12,15 +20,36 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--background);
 }
 
 body {
-  background: var(--background);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(245, 247, 241, 0.9) 42%),
+    var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: rgba(29, 185, 84, 0.24);
 }
