@@ -6,6 +6,7 @@ import type {
   SpotifyProfile,
   SpotifyTokenSession,
 } from "./types";
+import { normalizeTrackText, similarArtistName } from "./track-utils";
 
 const SPOTIFY_API_BASE = "https://api.spotify.com/v1";
 const SPOTIFY_ACCOUNTS_BASE = "https://accounts.spotify.com";
@@ -381,18 +382,10 @@ export async function searchBestTrack(
 
   return (
     tracks.find((track) => isLikelySameTrack(track, candidate)) ??
-    tracks.find((track) => sameArtist(track.artistName, candidate.artistName)) ??
+    tracks.find((track) => similarArtistName(track.artistName, candidate.artistName)) ??
     tracks[0] ??
     null
   );
-}
-
-export async function fetchArtistTopTracks(session: SpotifyTokenSession, artistId: string) {
-  const data = await spotifyFetch<{ tracks: SpotifyTrack[] }>(
-    session,
-    `/artists/${encodeURIComponent(artistId)}/top-tracks?market=from_token`,
-  );
-  return data.tracks.map(simplifyTrack);
 }
 
 export function simplifyTrack(track: SpotifyTrack): SimplifiedTrack {
@@ -415,29 +408,14 @@ function bestImage(images?: SpotifyImage[]) {
   return images?.[0]?.url;
 }
 
-function comparable(value: string) {
-  return value
-    .toLowerCase()
-    .replace(/\([^)]*\)/g, "")
-    .replace(/\[[^\]]*\]/g, "")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
-}
-
-function sameArtist(left: string, right: string) {
-  const leftValue = comparable(left);
-  const rightValue = comparable(right);
-  return leftValue.includes(rightValue) || rightValue.includes(leftValue);
-}
-
 function isLikelySameTrack(track: SimplifiedTrack, candidate: { name: string; artistName: string }) {
-  const trackName = comparable(track.name);
-  const candidateName = comparable(candidate.name);
+  const trackName = normalizeTrackText(track.name);
+  const candidateName = normalizeTrackText(candidate.name);
   return (
     (trackName === candidateName ||
       trackName.includes(candidateName) ||
       candidateName.includes(trackName)) &&
-    sameArtist(track.artistName, candidate.artistName)
+    similarArtistName(track.artistName, candidate.artistName)
   );
 }
 

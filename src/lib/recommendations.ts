@@ -1,6 +1,7 @@
 import { searchBestTrack } from "./spotify";
 import { getSimilarTracks, lastFmConfigured } from "./lastfm";
 import { findMusicBrainzRecordingMbid, getListenBrainzSimilarTracks } from "./listenbrainz";
+import { primaryArtist, samePrimaryArtist, trackKey } from "./track-utils";
 import type { RecommendationResponse, SimplifiedTrack, SpotifyTokenSession } from "./types";
 
 type CandidateBucket = {
@@ -10,6 +11,16 @@ type CandidateBucket = {
   supportSeeds: Set<string>;
   sourceUrl?: string;
   imageUrl?: string;
+};
+
+type CollaborativeSignal = "lastfm-co-listening" | "listenbrainz-collaborative";
+
+type RecommendationBuildOptions = {
+  signal: CollaborativeSignal;
+  reason: string;
+  maxConfidence: number;
+  confidenceWeight: number;
+  supportWeight: number;
 };
 
 type RecommendationOptions = {
@@ -132,51 +143,13 @@ export async function recommendFromSeeds(
     });
   }
 
-  const rankedBuckets = [...bucketMap.values()].sort((left, right) => {
-    return (
-      right.score - left.score ||
-      right.supportSeeds.size - left.supportSeeds.size ||
-      left.name.localeCompare(right.name)
-    );
+  const recommendations = await buildRecommendations(session, bucketMap, seeds, limit, {
+    signal: "lastfm-co-listening",
+    reason: "Last.fm listener-overlap candidate mapped back to Spotify catalog.",
+    maxConfidence: 97,
+    confidenceWeight: 0.82,
+    supportWeight: 6,
   });
-
-  const maxScore = rankedBuckets[0]?.score || 1;
-  const mapped = await Promise.all(
-    rankedBuckets.slice(0, Math.max(limit * 2, 30)).map(async (bucket) => {
-      const spotifyTrack = await searchBestTrack(session, {
-        name: bucket.name,
-        artistName: bucket.artistName,
-      }).catch(() => null);
-      return { bucket, spotifyTrack };
-    }),
-  );
-
-  const recommendations = mapped
-    .map(({ bucket, spotifyTrack }) => {
-      const track = spotifyTrack ?? {
-        name: bucket.name,
-        artistName: bucket.artistName,
-        imageUrl: bucket.imageUrl,
-        lastFmUrl: bucket.sourceUrl,
-      };
-      const normalizedScore = Math.round((bucket.score / maxScore) * 100);
-
-      return {
-        ...track,
-        lastFmUrl: bucket.sourceUrl,
-        score: normalizedScore,
-        confidence: Math.min(97, Math.round(normalizedScore * 0.82 + bucket.supportSeeds.size * 6)),
-        support: bucket.supportSeeds.size,
-        signal: "lastfm-co-listening" as const,
-        reason: "Last.fm listener-overlap candidate mapped back to Spotify catalog.",
-        seedNames: [...bucket.supportSeeds],
-        matchedOnSpotify: Boolean(spotifyTrack?.id),
-      };
-    })
-    .filter((track) => !isSeed(track, seeds))
-    .filter((track) => !isSamePrimaryArtistAsAnySeed(track, seeds))
-    .slice(0, limit)
-    .map((track, index) => ({ ...track, rank: index + 1 }));
 
   return {
     recommendations,
@@ -247,6 +220,22 @@ async function listenBrainzRecommendations(
     bucketMap.set(key, bucket);
   }
 
+  return buildRecommendations(session, bucketMap, seeds, limit, {
+    signal: "listenbrainz-collaborative",
+    reason: "ListenBrainz collaborative listening candidate mapped back to Spotify catalog.",
+    maxConfidence: 95,
+    confidenceWeight: 0.78,
+    supportWeight: 8,
+  });
+}
+
+async function buildRecommendations(
+  session: SpotifyTokenSession,
+  bucketMap: Map<string, CandidateBucket>,
+  seeds: SimplifiedTrack[],
+  limit: number,
+  options: RecommendationBuildOptions,
+) {
   const rankedBuckets = [...bucketMap.values()].sort((left, right) => {
     return (
       right.score - left.score ||
@@ -268,20 +257,26 @@ async function listenBrainzRecommendations(
 
   return mapped
     .map(({ bucket, spotifyTrack }) => {
+      const normalizedScore = Math.round((bucket.score / maxScore) * 100);
+      const support = Math.max(bucket.supportSeeds.size, 1);
       const track = spotifyTrack ?? {
         name: bucket.name,
         artistName: bucket.artistName,
         imageUrl: bucket.imageUrl,
+        lastFmUrl: bucket.sourceUrl,
       };
-      const normalizedScore = Math.round((bucket.score / maxScore) * 100);
 
       return {
         ...track,
+        lastFmUrl: bucket.sourceUrl,
         score: normalizedScore,
-        confidence: Math.min(95, Math.round(normalizedScore * 0.78 + bucket.supportSeeds.size * 8)),
-        support: Math.max(bucket.supportSeeds.size, 1),
-        signal: "listenbrainz-collaborative" as const,
-        reason: "ListenBrainz collaborative listening candidate mapped back to Spotify catalog.",
+        confidence: Math.min(
+          options.maxConfidence,
+          Math.round(normalizedScore * options.confidenceWeight + support * options.supportWeight),
+        ),
+        support,
+        signal: options.signal,
+        reason: options.reason,
         seedNames: [...bucket.supportSeeds],
         matchedOnSpotify: Boolean(spotifyTrack?.id),
       };
@@ -312,8 +307,7 @@ function isSamePrimaryArtistAsAnySeed(
   track: { artistName: string },
   seeds: SimplifiedTrack[],
 ) {
-  const artist = normalize(primaryArtist(track.artistName));
-  return seeds.some((seed) => normalize(primaryArtist(seed.artistName)) === artist);
+  return seeds.some((seed) => samePrimaryArtist(track.artistName, seed.artistName));
 }
 
 function noCollaborativeMatches(values: {
@@ -332,22 +326,4 @@ function noCollaborativeMatches(values: {
       notes: values.notes,
     },
   };
-}
-
-function trackKey(track: { name: string; artistName: string }) {
-  return `${normalize(primaryArtist(track.artistName))}:${normalize(track.name)}`;
-}
-
-function normalize(value: string) {
-  return value
-    .toLowerCase()
-    .replace(/&/g, "and")
-    .replace(/\([^)]*\)/g, "")
-    .replace(/\[[^\]]*\]/g, "")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
-}
-
-function primaryArtist(artistName: string) {
-  return artistName.split(",")[0]?.trim() || artistName;
 }

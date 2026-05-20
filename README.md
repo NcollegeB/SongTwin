@@ -66,6 +66,56 @@ npm run dev
 
 6. Open [http://127.0.0.1:3000](http://127.0.0.1:3000).
 
+## Deployment
+
+### Vercel
+
+SongTwin is a standard Next.js app and can deploy to Vercel from the GitHub repo or the Vercel CLI.
+
+[Deploy from GitHub on Vercel](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FNcollegeB%2FSongTwin&project-name=song-twin&repository-name=SongTwin&env=SPOTIFY_CLIENT_ID,SPOTIFY_REDIRECT_URI,SESSION_SECRET,LASTFM_API_KEY,MUSICBRAINZ_USER_AGENT)
+
+Required production environment variables:
+
+```bash
+SPOTIFY_CLIENT_ID=your_spotify_client_id
+SPOTIFY_REDIRECT_URI=https://your-vercel-domain.vercel.app/api/auth/callback
+SESSION_SECRET=your_long_random_secret
+LASTFM_API_KEY=your_lastfm_api_key
+MUSICBRAINZ_USER_AGENT=SongTwin/0.1 (you@example.com)
+```
+
+After Vercel gives you a production domain, add the exact `SPOTIFY_REDIRECT_URI` value to your Spotify app's redirect URI list, then redeploy. Vercel environment variable changes only apply to new deployments.
+
+CLI flow:
+
+```bash
+npm i -g vercel
+vercel link
+vercel env add SPOTIFY_CLIENT_ID production
+vercel env add SPOTIFY_REDIRECT_URI production
+vercel env add SESSION_SECRET production
+vercel env add LASTFM_API_KEY production
+vercel env add MUSICBRAINZ_USER_AGENT production
+vercel deploy --prod
+```
+
+### Self-hosted
+
+Run it on a PC or server with Node:
+
+```bash
+npm ci
+npm run build
+npm run start
+```
+
+Or run the Docker image:
+
+```bash
+docker build -t song-twin .
+docker run --env-file .env.local -p 3000:3000 song-twin
+```
+
 ## Scripts
 
 ```bash

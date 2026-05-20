@@ -1,3 +1,5 @@
+import { normalizeTrackText, primaryArtist } from "./track-utils";
+
 export type ListenBrainzSimilarTrack = {
   name: string;
   artistName: string;
@@ -60,15 +62,15 @@ export async function findMusicBrainzRecordingMbid(values: {
 
   const data = (await response.json()) as MusicBrainzSearchResponse;
   const recordings = data.recordings ?? [];
-  const normalizedName = normalize(values.name);
-  const normalizedArtist = normalize(primaryArtist(values.artistName));
+  const normalizedName = normalizeTrackText(values.name);
+  const normalizedArtist = normalizeTrackText(primaryArtist(values.artistName));
 
   const exact = recordings.find((recording) => {
     const recordingArtist = recording["artist-credit"]?.map((artist) => artist.name).join(" ") ?? "";
-    const disambiguation = normalize(recording.disambiguation ?? "");
+    const disambiguation = normalizeTrackText(recording.disambiguation ?? "");
     return (
-      normalize(recording.title ?? "") === normalizedName &&
-      normalize(recordingArtist).includes(normalizedArtist) &&
+      normalizeTrackText(recording.title ?? "") === normalizedName &&
+      normalizeTrackText(recordingArtist).includes(normalizedArtist) &&
       !disambiguation.includes("live")
     );
   });
@@ -119,18 +121,4 @@ async function fetchSimilarTracks(seedMbids: string[], algorithm: string) {
           : undefined,
     }))
     .filter((track) => Boolean(track.name && track.artistName && track.mbid));
-}
-
-function normalize(value: string) {
-  return value
-    .toLowerCase()
-    .replace(/&/g, "and")
-    .replace(/\([^)]*\)/g, "")
-    .replace(/\[[^\]]*\]/g, "")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
-}
-
-function primaryArtist(artistName: string) {
-  return artistName.split(",")[0]?.trim() || artistName;
 }

@@ -855,9 +855,7 @@ function SourceBadge({ summary }: { summary: RecommendationResponse["sourceSumma
       ? "Last.fm graph"
       : summary.provider === "listenbrainz"
         ? "ListenBrainz graph"
-        : summary.provider === "demo"
-          ? "Demo graph"
-          : "Needs data";
+        : "Demo graph";
 
   return (
     <span className="inline-flex h-8 items-center rounded-full bg-black/30 px-3 text-xs font-bold text-white">
@@ -903,32 +901,25 @@ function modeButtonClass(active: boolean) {
 }
 
 function signalLabel(signal: Recommendation["signal"]) {
-  if (signal === "lastfm-co-listening") {
-    return "Last.fm listeners";
+  switch (signal) {
+    case "lastfm-co-listening":
+      return "Last.fm listeners";
+    case "listenbrainz-collaborative":
+      return "ListenBrainz listeners";
+    case "demo-co-listening":
+      return "Demo graph";
   }
-
-  if (signal === "listenbrainz-collaborative") {
-    return "ListenBrainz listeners";
-  }
-
-  if (signal === "demo-co-listening") {
-    return "Demo graph";
-  }
-
-  return "Catalog";
 }
 
 function signalClass(signal: Recommendation["signal"]) {
   const base = "inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold";
-  if (signal === "lastfm-co-listening" || signal === "listenbrainz-collaborative") {
-    return `${base} bg-[#1db954] text-black`;
+  switch (signal) {
+    case "lastfm-co-listening":
+    case "listenbrainz-collaborative":
+      return `${base} bg-[#1db954] text-black`;
+    case "demo-co-listening":
+      return `${base} bg-[#315a7d] text-white`;
   }
-
-  if (signal === "demo-co-listening") {
-    return `${base} bg-[#315a7d] text-white`;
-  }
-
-  return `${base} bg-[#f5b84b] text-black`;
 }
 
 function emptyRecommendationMessage(summary: RecommendationResponse["sourceSummary"]) {
