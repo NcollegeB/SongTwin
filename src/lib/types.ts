@@ -45,10 +45,7 @@ export type Recommendation = SimplifiedTrack & {
   score: number;
   confidence: number;
   support: number;
-  signal:
-    | "lastfm-co-listening"
-    | "listenbrainz-collaborative"
-    | "demo-co-listening";
+  signal: "lastfm-co-listening" | "listenbrainz-collaborative";
   reason: string;
   seedNames: string[];
   matchedOnSpotify: boolean;
@@ -57,7 +54,7 @@ export type Recommendation = SimplifiedTrack & {
 export type RecommendationResponse = {
   recommendations: Recommendation[];
   sourceSummary: {
-    provider: "lastfm" | "listenbrainz" | "demo";
+    provider: "lastfm" | "listenbrainz" | "idle";
     lastFmConfigured: boolean;
     seedsAnalyzed: number;
     spotifyMatches: number;

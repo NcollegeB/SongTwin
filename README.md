@@ -10,7 +10,6 @@ SongTwin is a consumer Spotify web app for finding songs similar to a playlist o
 - Use Last.fm `track.getSimilar` when a Last.fm API key is configured.
 - Fall back to ListenBrainz collaborative-listening data when Last.fm is not configured.
 - Map recommendation candidates back to Spotify tracks so users can open them directly.
-- Demo mode for trying the interface before credentials are configured.
 - Clear empty states when true listener-overlap data is unavailable.
 
 ## API Reality
@@ -78,13 +77,20 @@ Required production environment variables:
 
 ```bash
 SPOTIFY_CLIENT_ID=your_spotify_client_id
-SPOTIFY_REDIRECT_URI=https://your-vercel-domain.vercel.app/api/auth/callback
 SESSION_SECRET=your_long_random_secret
 LASTFM_API_KEY=your_lastfm_api_key
 MUSICBRAINZ_USER_AGENT=SongTwin/0.1 (you@example.com)
 ```
 
-After Vercel gives you a production domain, add the exact `SPOTIFY_REDIRECT_URI` value to your Spotify app's redirect URI list, then redeploy. Vercel environment variable changes only apply to new deployments.
+`SPOTIFY_REDIRECT_URI` is optional in production. If it is omitted, SongTwin uses the current site origin and sends Spotify to:
+
+```text
+https://your-vercel-domain.vercel.app/api/auth/callback
+```
+
+After Vercel gives you a production domain, add that exact callback URL to your Spotify app's redirect URI list. Vercel environment variable changes only apply to new deployments.
+
+When this repo is connected to Vercel through the GitHub integration, pushes to `main` create a new production deployment automatically. Pull requests and non-production branches create preview deployments.
 
 CLI flow:
 
@@ -92,7 +98,6 @@ CLI flow:
 npm i -g vercel
 vercel link
 vercel env add SPOTIFY_CLIENT_ID production
-vercel env add SPOTIFY_REDIRECT_URI production
 vercel env add SESSION_SECRET production
 vercel env add LASTFM_API_KEY production
 vercel env add MUSICBRAINZ_USER_AGENT production

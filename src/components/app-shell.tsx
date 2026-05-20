@@ -20,7 +20,6 @@ import {
 } from "lucide-react";
 import type { FormEvent, ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { demoPlaylists, demoRecommendations, demoTracks } from "@/lib/demo-data";
 import type {
   ApiSessionResponse,
   PlaylistSummary,
@@ -31,25 +30,25 @@ import type {
 
 type SourceMode = "playlist" | "song";
 
-const demoSummary: RecommendationResponse["sourceSummary"] = {
-  provider: "demo",
+const initialSummary: RecommendationResponse["sourceSummary"] = {
+  provider: "idle",
   lastFmConfigured: false,
-  seedsAnalyzed: demoTracks.length,
-  spotifyMatches: demoRecommendations.length,
-  notes: ["Demo listener-overlap matches are showing until Spotify is connected."],
+  seedsAnalyzed: 0,
+  spotifyMatches: 0,
+  notes: [],
 };
 
 export function AppShell() {
   const [session, setSession] = useState<ApiSessionResponse | null>(null);
   const [sessionLoading, setSessionLoading] = useState(true);
-  const [playlists, setPlaylists] = useState<PlaylistSummary[]>(demoPlaylists);
-  const [selectedPlaylistId, setSelectedPlaylistId] = useState(demoPlaylists[0]?.id ?? "");
-  const [tracks, setTracks] = useState<SimplifiedTrack[]>(demoTracks);
-  const [selectedTrack, setSelectedTrack] = useState<SimplifiedTrack | null>(demoTracks[0]);
+  const [playlists, setPlaylists] = useState<PlaylistSummary[]>([]);
+  const [selectedPlaylistId, setSelectedPlaylistId] = useState("");
+  const [tracks, setTracks] = useState<SimplifiedTrack[]>([]);
+  const [selectedTrack, setSelectedTrack] = useState<SimplifiedTrack | null>(null);
   const [mode, setMode] = useState<SourceMode>("playlist");
-  const [recommendations, setRecommendations] = useState<Recommendation[]>(demoRecommendations);
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [sourceSummary, setSourceSummary] =
-    useState<RecommendationResponse["sourceSummary"]>(demoSummary);
+    useState<RecommendationResponse["sourceSummary"]>(initialSummary);
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<SimplifiedTrack[]>([]);
   const [loadingTracks, setLoadingTracks] = useState(false);
@@ -61,13 +60,17 @@ export function AppShell() {
   const selectedPlaylist = playlists.find((playlist) => playlist.id === selectedPlaylistId);
   const visibleTracks = useMemo(() => tracks.slice(0, 8), [tracks]);
   const sourceName =
-    mode === "playlist"
+    !connected
+      ? "Connect Spotify"
+      : mode === "playlist"
       ? selectedPlaylist?.source === "liked"
         ? "Liked Songs"
         : selectedPlaylist?.name ?? "Playlist"
       : selectedTrack?.name ?? "Pick a song";
   const sourceArtist =
-    mode === "playlist"
+    !connected
+      ? "Use your playlists and song searches to find listener-overlap matches"
+      : mode === "playlist"
       ? selectedPlaylist?.owner ?? "Your library"
       : selectedTrack?.artistName ?? "Spotify search";
   const sourceArtwork =
@@ -79,7 +82,7 @@ export function AppShell() {
     connected &&
     recommendations.length === 0 &&
     !sourceSummary.lastFmConfigured &&
-    sourceSummary.provider !== "demo";
+    sourceSummary.provider !== "idle";
 
   useEffect(() => {
     const oauthError = new URLSearchParams(window.location.search).get("error");
@@ -166,12 +169,12 @@ export function AppShell() {
       setSession(data);
 
       if (!data.connected) {
-        setPlaylists(demoPlaylists);
-        setTracks(demoTracks);
-        setSelectedPlaylistId(demoPlaylists[0]?.id ?? "");
-        setSelectedTrack(demoTracks[0]);
-        setRecommendations(demoRecommendations);
-        setSourceSummary(demoSummary);
+        setPlaylists([]);
+        setTracks([]);
+        setSelectedPlaylistId("");
+        setSelectedTrack(null);
+        setRecommendations([]);
+        setSourceSummary({ ...initialSummary, lastFmConfigured: data.lastFmConfigured });
         return;
       }
 
@@ -200,9 +203,8 @@ export function AppShell() {
     setSelectedPlaylistId(playlistId);
 
     if (!connected && !forceLive) {
-      setTracks(demoTracks);
-      setSelectedTrack(demoTracks[0]);
-      return true;
+      setError("Connect Spotify to load playlists.");
+      return false;
     }
 
     setLoadingTracks(true);
@@ -261,8 +263,7 @@ export function AppShell() {
 
   async function runRecommendations() {
     if (!connected) {
-      setRecommendations(demoRecommendations);
-      setSourceSummary(demoSummary);
+      setError("Connect Spotify to find songs from your playlists or searches.");
       return;
     }
 
@@ -365,7 +366,7 @@ export function AppShell() {
                 <Headphones size={17} aria-hidden="true" />
                 Your Library
               </div>
-              <span className="text-xs text-[#737373]">{connected ? "Spotify" : "Demo"}</span>
+              <span className="text-xs text-[#737373]">{connected ? "Spotify" : "Connect"}</span>
             </div>
 
             {mode === "playlist" ? (
@@ -429,7 +430,7 @@ export function AppShell() {
                   query={searchTerm}
                   searching={searching}
                   selectedTrack={selectedTrack}
-                  tracks={!connected ? demoTracks : searchResults}
+                  tracks={connected ? searchResults : []}
                   onSelect={setSelectedTrack}
                 />
               </div>
@@ -457,7 +458,7 @@ export function AppShell() {
                     {session?.profile?.displayName ?? "Taste Explorer"}
                   </p>
                   <p className="truncate text-xs text-[#d8e8de]">
-                    {connected ? "Connected with Spotify" : "Demo mode"}
+                    {connected ? "Connected with Spotify" : "Connect Spotify to start"}
                   </p>
                 </div>
               </div>
@@ -523,7 +524,7 @@ export function AppShell() {
                 <p className="mt-1 text-sm text-[#a7a7a7]">
                   {recommendations.length > 0
                     ? "Ranked from listener-overlap sources and mapped back to Spotify."
-                    : emptyRecommendationMessage(sourceSummary)}
+                    : emptyRecommendationMessage(sourceSummary, connected)}
                 </p>
               </div>
             </div>
@@ -546,7 +547,7 @@ export function AppShell() {
                   </div>
                 </div>
               ) : (
-                <EmptyPanel summary={sourceSummary} />
+                <EmptyPanel connected={connected} summary={sourceSummary} />
               )}
             </div>
           </div>
@@ -566,7 +567,7 @@ function StatusPill({ connected, loading }: { connected: boolean; loading: boole
       ) : (
         <CircleAlert className="text-[#f5b84b]" size={16} aria-hidden="true" />
       )}
-      <span className="sr-only">{loading ? "Checking" : connected ? "Spotify linked" : "Demo mode"}</span>
+      <span className="sr-only">{loading ? "Checking" : connected ? "Spotify linked" : "Spotify not linked"}</span>
     </div>
   );
 }
@@ -760,7 +761,13 @@ function LoadingPanel() {
   );
 }
 
-function EmptyPanel({ summary }: { summary: RecommendationResponse["sourceSummary"] }) {
+function EmptyPanel({
+  connected,
+  summary,
+}: {
+  connected: boolean;
+  summary: RecommendationResponse["sourceSummary"];
+}) {
   return (
     <div className="rounded-lg border border-[#242424] bg-[#181818] p-6">
       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#242424] text-[#1db954]">
@@ -768,9 +775,9 @@ function EmptyPanel({ summary }: { summary: RecommendationResponse["sourceSummar
       </div>
       <h4 className="mt-4 text-lg font-bold">No listener-overlap songs yet</h4>
       <p className="mt-2 max-w-2xl text-sm leading-6 text-[#b3b3b3]">
-        {emptyRecommendationMessage(summary)}
+        {emptyRecommendationMessage(summary, connected)}
       </p>
-      {!summary.lastFmConfigured ? (
+      {connected && !summary.lastFmConfigured ? (
         <p className="mt-3 max-w-2xl text-sm leading-6 text-[#b3b3b3]">
           A Last.fm API key gives SongTwin a wider track similarity graph than the no-key ListenBrainz fallback.
         </p>
@@ -852,10 +859,10 @@ function Cover({
 function SourceBadge({ summary }: { summary: RecommendationResponse["sourceSummary"] }) {
   const label =
     summary.provider === "lastfm"
-      ? "Last.fm graph"
-      : summary.provider === "listenbrainz"
-        ? "ListenBrainz graph"
-        : "Demo graph";
+        ? "Last.fm graph"
+        : summary.provider === "listenbrainz"
+          ? "ListenBrainz graph"
+          : "Listener graph";
 
   return (
     <span className="inline-flex h-8 items-center rounded-full bg-black/30 px-3 text-xs font-bold text-white">
@@ -874,7 +881,7 @@ function GraphHealth({
   needsLastFm: boolean;
 }) {
   const label = !connected
-    ? "Demo"
+    ? "Sign in"
     : graphReady
       ? "Co-listening"
       : needsLastFm
@@ -906,8 +913,6 @@ function signalLabel(signal: Recommendation["signal"]) {
       return "Last.fm listeners";
     case "listenbrainz-collaborative":
       return "ListenBrainz listeners";
-    case "demo-co-listening":
-      return "Demo graph";
   }
 }
 
@@ -917,12 +922,14 @@ function signalClass(signal: Recommendation["signal"]) {
     case "lastfm-co-listening":
     case "listenbrainz-collaborative":
       return `${base} bg-[#1db954] text-black`;
-    case "demo-co-listening":
-      return `${base} bg-[#315a7d] text-white`;
   }
 }
 
-function emptyRecommendationMessage(summary: RecommendationResponse["sourceSummary"]) {
+function emptyRecommendationMessage(summary: RecommendationResponse["sourceSummary"], connected: boolean) {
+  if (!connected) {
+    return "Connect Spotify to choose a playlist or song and build recommendations from listener-overlap data.";
+  }
+
   if (!summary.lastFmConfigured) {
     return "ListenBrainz did not return cross-artist listener matches for this seed. SongTwin is hiding same-artist Spotify catalog filler; add LASTFM_API_KEY for the stronger co-listening graph.";
   }
@@ -932,11 +939,11 @@ function emptyRecommendationMessage(summary: RecommendationResponse["sourceSumma
 
 function oauthErrorMessage(error: string) {
   if (error === "invalid-auth-state") {
-    return "Spotify login came back on a different local host. Use http://127.0.0.1:3000, then connect again.";
+    return "Spotify login state expired or came back on a different host. Start Spotify connection again from this same URL.";
   }
 
   if (error === "spotify-token-exchange") {
-    return "Spotify approved the login, but the token exchange failed. Check that the Spotify redirect URI is exactly http://127.0.0.1:3000/api/auth/callback.";
+    return "Spotify approved the login, but the token exchange failed. Check that the Spotify app contains this site's exact callback URL.";
   }
 
   if (error === "missing-spotify-client-id") {
