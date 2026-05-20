@@ -62,6 +62,12 @@ export function AppShell() {
   const visibleTracks = useMemo(() => tracks.slice(0, 6), [tracks]);
 
   useEffect(() => {
+    const oauthError = new URLSearchParams(window.location.search).get("error");
+    if (oauthError) {
+      window.setTimeout(() => setError(oauthErrorMessage(oauthError)), 0);
+      window.history.replaceState(null, "", window.location.pathname);
+    }
+
     void loadSession();
     // The first load must run once; subsequent refreshes are triggered by user actions.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -604,4 +610,20 @@ function signalClass(signal: Recommendation["signal"]) {
   }
 
   return `${base} bg-[#fff1dd] text-[#895511]`;
+}
+
+function oauthErrorMessage(error: string) {
+  if (error === "invalid-auth-state") {
+    return "Spotify login came back on a different local host. Use http://127.0.0.1:3000, then connect again.";
+  }
+
+  if (error === "spotify-token-exchange") {
+    return "Spotify approved the login, but the token exchange failed. Check that the Spotify redirect URI is exactly http://127.0.0.1:3000/api/auth/callback.";
+  }
+
+  if (error === "missing-spotify-client-id") {
+    return "SPOTIFY_CLIENT_ID is missing from .env.local.";
+  }
+
+  return `Spotify login failed: ${error}`;
 }

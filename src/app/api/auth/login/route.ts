@@ -17,9 +17,16 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  const redirectUri = getRedirectUri(request);
+  const redirectOrigin = new URL(redirectUri).origin;
+  const requestOrigin = `${request.nextUrl.protocol}//${request.headers.get("host")}`;
+
+  if (requestOrigin !== redirectOrigin) {
+    return NextResponse.redirect(new URL(request.nextUrl.pathname, redirectOrigin));
+  }
+
   const state = generateState();
   const verifier = generateVerifier();
-  const redirectUri = getRedirectUri(request);
   const response = NextResponse.redirect(
     buildAuthorizeUrl({
       state,
