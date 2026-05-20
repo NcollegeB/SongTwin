@@ -31,8 +31,11 @@ type ListenBrainzSimilarResponse = Array<{
   caa_release_mbid?: string;
 }>;
 
-const LISTENBRAINZ_ALGORITHM =
-  "session_based_days_7500_session_300_contribution_5_threshold_15_limit_50_skip_30_top_n_listeners_1000";
+const LISTENBRAINZ_ALGORITHMS = [
+  "session_based_days_7500_session_300_contribution_5_threshold_15_limit_50_skip_30_top_n_listeners_1000",
+  "session_based_days_7500_session_300_contribution_sqrt_threshold_15_limit_50_skip_30_top_n_listeners_1000",
+  "session_based_listens_session_300_contribution_5_threshold_15_limit_50_skip_30",
+];
 
 export async function findMusicBrainzRecordingMbid(values: {
   name: string;
@@ -78,9 +81,19 @@ export async function getListenBrainzSimilarTracks(seedMbids: string[]) {
     return [];
   }
 
+  const settled = await Promise.allSettled(
+    LISTENBRAINZ_ALGORITHMS.map((algorithm) => fetchSimilarTracks(seedMbids, algorithm)),
+  );
+
+  return settled
+    .flatMap((result) => (result.status === "fulfilled" ? result.value : []))
+    .filter((track) => Boolean(track.name && track.artistName && track.mbid));
+}
+
+async function fetchSimilarTracks(seedMbids: string[], algorithm: string) {
   const params = new URLSearchParams({
     recording_mbids: seedMbids.join(","),
-    algorithm: LISTENBRAINZ_ALGORITHM,
+    algorithm,
   });
 
   const response = await fetch(`https://labs.api.listenbrainz.org/similar-recordings/json?${params}`, {

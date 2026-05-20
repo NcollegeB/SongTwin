@@ -11,7 +11,7 @@ SongTwin is a consumer Spotify web app for finding songs similar to a playlist o
 - Fall back to ListenBrainz collaborative-listening data when Last.fm is not configured.
 - Map recommendation candidates back to Spotify tracks so users can open them directly.
 - Demo mode for trying the interface before credentials are configured.
-- Clear fallback labeling when Last.fm is not configured.
+- Clear empty states when true listener-overlap data is unavailable.
 
 ## API Reality
 
@@ -21,7 +21,8 @@ SongTwin therefore uses Spotify for identity, readable user sources, search, and
 
 - Last.fm `track.getSimilar` when `LASTFM_API_KEY` is configured.
 - ListenBrainz Labs similar recordings as a no-key collaborative fallback.
-- Spotify artist catalog proximity only as a last-resort fallback, clearly labeled in the UI.
+
+SongTwin intentionally avoids filling results with same-artist Spotify catalog proximity when the collaborative sources return nothing. That keeps weak "more songs by this artist" results from being confused with real listener-overlap data.
 
 References:
 
@@ -77,4 +78,4 @@ npm run build
 
 - Spotify tokens stay server-side.
 - Changing `SESSION_SECRET` invalidates existing sessions.
-- Without `LASTFM_API_KEY`, SongTwin tries ListenBrainz first. If neither collaborative source returns matches, it labels recommendations as fallback matches.
+- Without `LASTFM_API_KEY`, SongTwin tries ListenBrainz first. If neither collaborative source returns cross-artist matches, it shows an empty listener-graph state instead of same-artist catalog filler.

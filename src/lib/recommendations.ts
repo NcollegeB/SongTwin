@@ -1,7 +1,7 @@
-import { fetchArtistTopTracks, searchBestTrack, searchTracks } from "./spotify";
+import { searchBestTrack } from "./spotify";
 import { getSimilarTracks, lastFmConfigured } from "./lastfm";
 import { findMusicBrainzRecordingMbid, getListenBrainzSimilarTracks } from "./listenbrainz";
-import type { Recommendation, RecommendationResponse, SimplifiedTrack, SpotifyTokenSession } from "./types";
+import type { RecommendationResponse, SimplifiedTrack, SpotifyTokenSession } from "./types";
 
 type CandidateBucket = {
   name: string;
@@ -55,19 +55,15 @@ export async function recommendFromSeeds(
       };
     }
 
-    const fallback = await artistCatalogFallback(session, seeds, limit);
-    return {
-      recommendations: fallback,
-      sourceSummary: {
-        provider: "spotify-fallback",
-        lastFmConfigured: false,
-        seedsAnalyzed: seeds.length,
-        spotifyMatches: fallback.length,
-        notes: [
-          "No co-listening source returned matches, so results use artist catalog proximity.",
-        ],
-      },
-    };
+    return noCollaborativeMatches({
+      provider: "listenbrainz",
+      lastFmConfigured: false,
+      seedsAnalyzed: Math.min(seeds.length, 4),
+      notes: [
+        "ListenBrainz returned no cross-artist co-listening matches for this seed.",
+        "Add LASTFM_API_KEY for a larger listener-overlap graph.",
+      ],
+    });
   }
 
   const bucketMap = new Map<string, CandidateBucket>();
@@ -82,7 +78,7 @@ export async function recommendFromSeeds(
       const seedWeight = Math.max(0.55, 1 - seedIndex * 0.05);
 
       for (const track of similar) {
-        if (isSeed(track, seeds)) {
+        if (isSeed(track, seeds) || isSamePrimaryArtistAsAnySeed(track, seeds)) {
           continue;
         }
 
@@ -111,17 +107,29 @@ export async function recommendFromSeeds(
   }
 
   if (bucketMap.size === 0) {
-    const fallback = await artistCatalogFallback(session, seeds, limit);
-    return {
-      recommendations: fallback,
-      sourceSummary: {
-        provider: "spotify-fallback",
-        lastFmConfigured: true,
-        seedsAnalyzed: seeds.length,
-        spotifyMatches: fallback.length,
-        notes: ["Last.fm returned no usable candidates, so a catalog fallback was used."],
-      },
-    };
+    const listenBrainz = await listenBrainzRecommendations(session, seeds, limit);
+    if (listenBrainz.length > 0) {
+      return {
+        recommendations: listenBrainz,
+        sourceSummary: {
+          provider: "listenbrainz",
+          lastFmConfigured: true,
+          seedsAnalyzed: Math.min(seeds.length, 4),
+          spotifyMatches: listenBrainz.filter((track) => track.matchedOnSpotify).length,
+          notes: ["Last.fm returned no cross-artist candidates, so ListenBrainz was used."],
+        },
+      };
+    }
+
+    return noCollaborativeMatches({
+      provider: "lastfm",
+      lastFmConfigured: true,
+      seedsAnalyzed: seeds.length,
+      notes: [
+        "Last.fm and ListenBrainz returned no cross-artist co-listening matches for this seed.",
+        "SongTwin is not showing same-artist catalog filler because it is not listener-overlap data.",
+      ],
+    });
   }
 
   const rankedBuckets = [...bucketMap.values()].sort((left, right) => {
@@ -166,6 +174,7 @@ export async function recommendFromSeeds(
       };
     })
     .filter((track) => !isSeed(track, seeds))
+    .filter((track) => !isSamePrimaryArtistAsAnySeed(track, seeds))
     .slice(0, limit)
     .map((track, index) => ({ ...track, rank: index + 1 }));
 
@@ -216,7 +225,7 @@ async function listenBrainzRecommendations(
   >();
 
   for (const track of similar) {
-    if (isSeed(track, seeds)) {
+    if (isSeed(track, seeds) || isSamePrimaryArtistAsAnySeed(track, seeds)) {
       continue;
     }
 
@@ -278,99 +287,9 @@ async function listenBrainzRecommendations(
       };
     })
     .filter((track) => !isSeed(track, seeds))
+    .filter((track) => !isSamePrimaryArtistAsAnySeed(track, seeds))
     .slice(0, limit)
     .map((track, index) => ({ ...track, rank: index + 1 }));
-}
-
-async function artistCatalogFallback(
-  session: SpotifyTokenSession,
-  seeds: SimplifiedTrack[],
-  limit: number,
-) {
-  const buckets = new Map<string, SimplifiedTrack & { supportSeeds: Set<string> }>();
-
-  await Promise.all(
-    seeds.map(async (seed) => {
-      const tracks = await getFallbackTracksForSeed(session, seed);
-
-      for (const track of tracks) {
-        if (isSeed(track, seeds)) {
-          continue;
-        }
-
-        const key = trackKey(track);
-        const existing = buckets.get(key) ?? { ...track, supportSeeds: new Set<string>() };
-        existing.supportSeeds.add(seed.name);
-        buckets.set(key, existing);
-      }
-    }),
-  );
-
-  return [...buckets.values()]
-    .sort((left, right) => {
-      return (
-        (right.popularity ?? 0) - (left.popularity ?? 0) ||
-        right.supportSeeds.size - left.supportSeeds.size
-      );
-    })
-    .slice(0, limit)
-    .map<Recommendation>((track, index) => ({
-      id: track.id,
-      name: track.name,
-      artistName: track.artistName,
-      artistId: track.artistId,
-      albumName: track.albumName,
-      imageUrl: track.imageUrl,
-      spotifyUrl: track.spotifyUrl,
-      durationMs: track.durationMs,
-      popularity: track.popularity,
-      rank: index + 1,
-      score: Math.max(38, 72 - index * 2),
-      confidence: Math.max(28, 56 - index),
-      support: track.supportSeeds.size,
-      signal: "spotify-artist-catalog",
-      reason: "Fallback uses artist catalog proximity because co-listening data is not configured.",
-      seedNames: [...track.supportSeeds],
-      matchedOnSpotify: true,
-    }));
-}
-
-async function getFallbackTracksForSeed(
-  session: SpotifyTokenSession,
-  seed: SimplifiedTrack,
-) {
-  const collected = new Map<string, SimplifiedTrack>();
-  const addTracks = (tracks: SimplifiedTrack[]) => {
-    for (const track of tracks) {
-      collected.set(trackKey(track), track);
-    }
-  };
-
-  if (seed.artistId) {
-    addTracks(await fetchArtistTopTracks(session, seed.artistId).catch(() => []));
-  }
-
-  if (collected.size < 3) {
-    addTracks(
-      await searchTracks(session, `artist:${primaryArtist(seed.artistName)}`, 10).catch(
-        () => [],
-      ),
-    );
-  }
-
-  if (collected.size < 3) {
-    addTracks(await searchTracks(session, primaryArtist(seed.artistName), 10).catch(() => []));
-  }
-
-  if (collected.size < 3 && seed.albumName) {
-    addTracks(
-      await searchTracks(session, `${seed.albumName} ${primaryArtist(seed.artistName)}`, 10).catch(
-        () => [],
-      ),
-    );
-  }
-
-  return [...collected.values()];
 }
 
 function dedupeTracks(tracks: SimplifiedTrack[]) {
@@ -387,6 +306,32 @@ function dedupeTracks(tracks: SimplifiedTrack[]) {
 
 function isSeed(track: { name: string; artistName: string }, seeds: SimplifiedTrack[]) {
   return seeds.some((seed) => trackKey(track) === trackKey(seed));
+}
+
+function isSamePrimaryArtistAsAnySeed(
+  track: { artistName: string },
+  seeds: SimplifiedTrack[],
+) {
+  const artist = normalize(primaryArtist(track.artistName));
+  return seeds.some((seed) => normalize(primaryArtist(seed.artistName)) === artist);
+}
+
+function noCollaborativeMatches(values: {
+  provider: RecommendationResponse["sourceSummary"]["provider"];
+  lastFmConfigured: boolean;
+  seedsAnalyzed: number;
+  notes: string[];
+}): RecommendationResponse {
+  return {
+    recommendations: [],
+    sourceSummary: {
+      provider: values.provider,
+      lastFmConfigured: values.lastFmConfigured,
+      seedsAnalyzed: values.seedsAnalyzed,
+      spotifyMatches: 0,
+      notes: values.notes,
+    },
+  };
 }
 
 function trackKey(track: { name: string; artistName: string }) {

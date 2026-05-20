@@ -36,7 +36,7 @@ const demoSummary: RecommendationResponse["sourceSummary"] = {
   lastFmConfigured: false,
   seedsAnalyzed: demoTracks.length,
   spotifyMatches: demoRecommendations.length,
-  notes: ["Demo matches are showing until Spotify is connected."],
+  notes: ["Demo listener-overlap matches are showing until Spotify is connected."],
 };
 
 export function AppShell() {
@@ -59,7 +59,27 @@ export function AppShell() {
 
   const connected = Boolean(session?.connected);
   const selectedPlaylist = playlists.find((playlist) => playlist.id === selectedPlaylistId);
-  const visibleTracks = useMemo(() => tracks.slice(0, 6), [tracks]);
+  const visibleTracks = useMemo(() => tracks.slice(0, 8), [tracks]);
+  const sourceName =
+    mode === "playlist"
+      ? selectedPlaylist?.source === "liked"
+        ? "Liked Songs"
+        : selectedPlaylist?.name ?? "Playlist"
+      : selectedTrack?.name ?? "Pick a song";
+  const sourceArtist =
+    mode === "playlist"
+      ? selectedPlaylist?.owner ?? "Your library"
+      : selectedTrack?.artistName ?? "Spotify search";
+  const sourceArtwork =
+    mode === "playlist" ? selectedPlaylist?.imageUrl ?? visibleTracks[0]?.imageUrl : selectedTrack?.imageUrl;
+  const graphReady =
+    recommendations.length > 0 &&
+    (sourceSummary.provider === "lastfm" || sourceSummary.provider === "listenbrainz");
+  const needsLastFm =
+    connected &&
+    recommendations.length === 0 &&
+    !sourceSummary.lastFmConfigured &&
+    sourceSummary.provider !== "demo";
 
   useEffect(() => {
     const oauthError = new URLSearchParams(window.location.search).get("error");
@@ -195,9 +215,7 @@ export function AppShell() {
         playlistId === "liked-songs"
           ? "/api/library/tracks"
           : `/api/playlists/${encodeURIComponent(playlistId)}/tracks`;
-      const payload = await fetchJson<{ tracks: SimplifiedTrack[] }>(
-        endpoint,
-      );
+      const payload = await fetchJson<{ tracks: SimplifiedTrack[] }>(endpoint);
       setTracks(payload.tracks);
       setSelectedTrack(payload.tracks[0] ?? null);
       return payload.tracks.length > 0;
@@ -284,71 +302,24 @@ export function AppShell() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-4 text-[#17201b] sm:px-6 lg:px-8">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-5">
-        <header className="flex flex-col gap-4 rounded-lg border border-[#dfe6d8] bg-white/88 p-4 shadow-sm backdrop-blur sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-[#1db954] text-[#0b2314]">
-              <Waves size={24} aria-hidden="true" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-semibold">SongTwin</h1>
-              <p className="text-sm text-[#647064]">Find the songs your taste is already near.</p>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <StatusPill connected={connected} loading={sessionLoading} />
-            {connected ? (
-              <button
-                className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#d2dbcb] bg-white px-3 text-sm font-medium text-[#314036] hover:bg-[#eef4ea]"
-                onClick={logout}
-                type="button"
-              >
-                <LogOut size={16} aria-hidden="true" />
-                Disconnect
-              </button>
-            ) : (
-              <a
-                className={[
-                  "inline-flex h-10 items-center gap-2 rounded-lg px-3 text-sm font-semibold",
-                  session?.spotifyConfigured === false
-                    ? "pointer-events-none bg-[#d9dfd2] text-[#6b746c]"
-                    : "bg-[#1db954] text-[#102016] hover:bg-[#19a84c]",
-                ].join(" ")}
-                href="/api/auth/login"
-              >
-                <PlugZap size={17} aria-hidden="true" />
-                Connect Spotify
-              </a>
-            )}
-          </div>
-        </header>
-
-        {error ? (
-          <div className="flex items-start gap-3 rounded-lg border border-[#edc7bd] bg-[#fff4f1] p-3 text-sm text-[#873623]">
-            <CircleAlert size={18} aria-hidden="true" />
-            <span>{error}</span>
-          </div>
-        ) : null}
-
-        {session?.setupSteps.length ? (
-          <div className="rounded-lg border border-[#ead39e] bg-[#fff8e8] p-3 text-sm text-[#6e4b0e]">
-            {session.setupSteps.join(" ")}
-          </div>
-        ) : null}
-
-        <section className="grid gap-5 lg:grid-cols-[390px_minmax(0,1fr)]">
-          <div className="rounded-lg border border-[#dfe6d8] bg-white p-4 shadow-sm">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[12px] uppercase text-[#6b746c]">Start with</p>
-                <h2 className="mt-1 text-xl font-semibold">A playlist or one song</h2>
+    <main className="min-h-screen bg-black p-2 text-white sm:p-3">
+      <div className="mx-auto grid min-h-[calc(100vh-1rem)] w-full max-w-[1500px] gap-2 lg:grid-cols-[310px_minmax(0,1fr)]">
+        <aside className="flex min-h-0 flex-col gap-2">
+          <section className="rounded-lg bg-[#121212] p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded bg-[#1db954] text-black">
+                  <Waves size={22} aria-hidden="true" />
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold tracking-normal">SongTwin</h1>
+                  <p className="text-xs text-[#b3b3b3]">Listener graph discovery</p>
+                </div>
               </div>
-              <Sparkles size={21} className="text-[#0b6b62]" aria-hidden="true" />
+              <StatusPill connected={connected} loading={sessionLoading} />
             </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-2 rounded-lg bg-[#edf3e9] p-1">
+            <div className="mt-5 grid grid-cols-2 gap-2 rounded-lg bg-[#0a0a0a] p-1">
               <button
                 className={modeButtonClass(mode === "playlist")}
                 onClick={() => setMode("playlist")}
@@ -367,13 +338,43 @@ export function AppShell() {
               </button>
             </div>
 
+            <div className="mt-4 flex flex-wrap gap-2">
+              {connected ? (
+                <button className="connect-button secondary" onClick={logout} type="button">
+                  <LogOut size={16} aria-hidden="true" />
+                  Disconnect
+                </button>
+              ) : (
+                <a
+                  className={[
+                    "connect-button",
+                    session?.spotifyConfigured === false ? "pointer-events-none opacity-50" : "",
+                  ].join(" ")}
+                  href="/api/auth/login"
+                >
+                  <PlugZap size={16} aria-hidden="true" />
+                  Connect Spotify
+                </a>
+              )}
+            </div>
+          </section>
+
+          <section className="min-h-0 flex-1 rounded-lg bg-[#121212] p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm font-semibold text-[#b3b3b3]">
+                <Headphones size={17} aria-hidden="true" />
+                Your Library
+              </div>
+              <span className="text-xs text-[#737373]">{connected ? "Spotify" : "Demo"}</span>
+            </div>
+
             {mode === "playlist" ? (
-              <div className="mt-4">
-                <label className="text-sm font-medium text-[#344238]" htmlFor="playlist">
-                  Your source
+              <div className="flex min-h-0 flex-col gap-3">
+                <label className="sr-only" htmlFor="playlist">
+                  Playlist
                 </label>
                 <select
-                  className="mt-2 h-11 w-full rounded-lg border border-[#d2dbcb] bg-white px-3 text-sm"
+                  className="h-11 w-full rounded-lg border border-[#2a2a2a] bg-[#242424] px-3 text-sm font-medium text-white outline-none transition hover:bg-[#2a2a2a] focus:border-[#1db954]"
                   id="playlist"
                   value={selectedPlaylistId}
                   onChange={(event) => void loadPlaylistTracks(event.target.value)}
@@ -384,9 +385,6 @@ export function AppShell() {
                     </option>
                   ))}
                 </select>
-                <p className="mt-2 text-[12px] leading-5 text-[#6b746c]">
-                  Spotify only allows this app to read Liked Songs and playlists you own or collaborate on.
-                </p>
 
                 <PlaylistPreview
                   loading={loadingTracks}
@@ -395,120 +393,160 @@ export function AppShell() {
                 />
               </div>
             ) : (
-              <div className="mt-4">
-                <form className="flex gap-2" onSubmit={searchSpotify}>
+              <div>
+                <form className="relative" onSubmit={searchSpotify}>
+                  <label className="sr-only" htmlFor="song-search">
+                    Search for a song
+                  </label>
+                  <Search
+                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#a7a7a7]"
+                    size={17}
+                    aria-hidden="true"
+                  />
                   <input
-                    className="h-11 min-w-0 flex-1 rounded-lg border border-[#d2dbcb] bg-white px-3 text-sm"
+                    className="h-11 w-full rounded-full border border-transparent bg-[#242424] pl-10 pr-12 text-sm font-medium text-white outline-none transition placeholder:text-[#a7a7a7] hover:bg-[#2a2a2a] focus:border-[#1db954]"
+                    id="song-search"
                     onChange={(event) => setSearchTerm(event.target.value)}
-                    placeholder="Search for a song"
+                    placeholder="What song?"
                     value={searchTerm}
                   />
                   <button
-                    className="inline-flex h-11 items-center justify-center rounded-lg bg-[#0b6b62] px-3 text-sm font-semibold text-white hover:bg-[#095d55]"
+                    className="absolute right-1 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-[#1db954] text-black transition hover:scale-105 disabled:cursor-not-allowed disabled:opacity-60"
                     disabled={searching}
                     type="submit"
                   >
                     {searching ? (
-                      <Loader2 className="animate-spin" size={17} aria-hidden="true" />
+                      <Loader2 className="animate-spin" size={16} aria-hidden="true" />
                     ) : (
-                      <Search size={17} aria-hidden="true" />
+                      <Play size={15} aria-hidden="true" />
                     )}
+                    <span className="sr-only">Search Spotify</span>
                   </button>
                 </form>
 
-                <div className="mt-3 grid gap-2">
-                  {connected && searchTerm.trim().length < 2 ? (
-                    <p className="rounded-lg border border-[#dfe6d8] bg-[#f8faf5] p-3 text-sm text-[#6b746c]">
-                      Type at least two characters to search Spotify.
-                    </p>
-                  ) : null}
-                  {connected && searchTerm.trim().length >= 2 && searching ? (
-                    <div className="flex items-center gap-2 rounded-lg border border-[#dfe6d8] bg-[#f8faf5] p-3 text-sm text-[#6b746c]">
-                      <Loader2 className="animate-spin" size={16} />
-                      Searching Spotify
-                    </div>
-                  ) : null}
-                  {connected &&
-                  searchTerm.trim().length >= 2 &&
-                  !searching &&
-                  searchResults.length === 0 ? (
-                    <p className="rounded-lg border border-[#dfe6d8] bg-[#f8faf5] p-3 text-sm text-[#6b746c]">
-                      No songs found yet.
-                    </p>
-                  ) : null}
-                  {(!connected ? demoTracks : searchResults).slice(0, 6).map((track) => (
-                    <button
-                      className={[
-                        "flex items-center gap-3 rounded-lg border p-2 text-left text-sm transition",
-                        selectedTrack?.id === track.id
-                          ? "border-[#1db954] bg-[#effaf2]"
-                          : "border-[#dfe6d8] bg-white hover:bg-[#f5f8f2]",
-                      ].join(" ")}
-                      key={`${track.id}-${track.name}`}
-                      onClick={() => setSelectedTrack(track)}
-                      type="button"
-                    >
-                      <Cover src={track.imageUrl} label={track.name} size="sm" />
-                      <span className="min-w-0">
-                        <span className="block truncate font-medium">{track.name}</span>
-                        <span className="block truncate text-[#6b746c]">{track.artistName}</span>
-                      </span>
-                    </button>
-                  ))}
-                </div>
+                <SearchResults
+                  connected={connected}
+                  query={searchTerm}
+                  searching={searching}
+                  selectedTrack={selectedTrack}
+                  tracks={!connected ? demoTracks : searchResults}
+                  onSelect={setSelectedTrack}
+                />
               </div>
             )}
+          </section>
+        </aside>
 
-            <button
-              className="mt-4 inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#19211d] px-4 text-sm font-semibold text-white hover:bg-[#28332d] disabled:cursor-not-allowed disabled:bg-[#9aa497]"
-              disabled={running || sessionLoading}
-              onClick={runRecommendations}
-              type="button"
-            >
-              {running ? <Loader2 className="animate-spin" size={17} /> : <Play size={17} />}
-              Find my song twins
-            </button>
+        <section className="min-w-0 overflow-hidden rounded-lg bg-[#121212]">
+          <div className="bg-[linear-gradient(180deg,#1f4f35_0%,#163525_34%,#121212_100%)] px-4 pb-6 pt-4 sm:px-6 lg:px-8">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 items-center gap-3">
+                {session?.profile?.imageUrl ? (
+                  <img
+                    alt=""
+                    className="h-9 w-9 rounded-full object-cover"
+                    src={session.profile.imageUrl}
+                  />
+                ) : (
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-black/30 text-[#1db954]">
+                    <Sparkles size={18} aria-hidden="true" />
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold">
+                    {session?.profile?.displayName ?? "Taste Explorer"}
+                  </p>
+                  <p className="truncate text-xs text-[#d8e8de]">
+                    {connected ? "Connected with Spotify" : "Demo mode"}
+                  </p>
+                </div>
+              </div>
 
-            <div className="mt-4 grid grid-cols-3 gap-2">
-              <MiniStat icon={<Headphones size={16} />} label="Seeds" value={sourceSummary.seedsAnalyzed} />
-              <MiniStat icon={<Heart size={16} />} label="Matches" value={recommendations.length} />
-              <MiniStat icon={<CheckCircle2 size={16} />} label="Linked" value={sourceSummary.spotifyMatches} />
+              <div className="flex flex-wrap items-center gap-2">
+                <SourceBadge summary={sourceSummary} />
+                <GraphHealth
+                  connected={connected}
+                  graphReady={graphReady}
+                  needsLastFm={needsLastFm}
+                />
+              </div>
+            </div>
+
+            {error ? (
+              <Alert tone="error" icon={<CircleAlert size={18} aria-hidden="true" />}>
+                {error}
+              </Alert>
+            ) : null}
+
+            {session?.setupSteps.length ? (
+              <Alert tone="warn" icon={<CircleAlert size={18} aria-hidden="true" />}>
+                {session.setupSteps.join(" ")}
+              </Alert>
+            ) : null}
+
+            <div className="mt-7 flex flex-col gap-5 md:flex-row md:items-end">
+              <Cover src={sourceArtwork} label={sourceName} size="hero" />
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#d8e8de]">
+                  {mode === "playlist" ? "Source playlist" : "Source song"}
+                </p>
+                <h2 className="mt-2 break-words text-4xl font-black tracking-normal sm:text-5xl lg:text-6xl">
+                  {sourceName}
+                </h2>
+                <p className="mt-3 truncate text-sm font-medium text-[#d8e8de]">{sourceArtist}</p>
+                <div className="mt-5 flex flex-wrap items-center gap-3">
+                  <button
+                    className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-[#1db954] px-6 text-sm font-bold text-black shadow-lg shadow-black/25 transition hover:scale-[1.02] hover:bg-[#1ed760] disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={running || sessionLoading}
+                    onClick={runRecommendations}
+                    type="button"
+                  >
+                    {running ? <Loader2 className="animate-spin" size={18} /> : <Play size={18} />}
+                    Find songs
+                  </button>
+                  <div className="grid grid-cols-3 gap-2">
+                    <MiniStat icon={<Headphones size={15} />} label="Seeds" value={sourceSummary.seedsAnalyzed} />
+                    <MiniStat icon={<Heart size={15} />} label="Songs" value={recommendations.length} />
+                    <MiniStat icon={<CheckCircle2 size={15} />} label="Linked" value={sourceSummary.spotifyMatches} />
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="min-w-0">
-            <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div className="px-4 pb-8 sm:px-6 lg:px-8">
+            <SourceNotes notes={sourceSummary.notes} />
+
+            <div className="mt-4 flex items-end justify-between gap-4">
               <div>
-                <p className="text-[12px] uppercase text-[#6b746c]">Matches</p>
-                <h2 className="text-2xl font-semibold">Songs to try next</h2>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <SourceBadge summary={sourceSummary} />
-                {sourceSummary.notes.slice(0, 1).map((note) => (
-                  <span
-                    className="rounded-lg border border-[#dfe6d8] bg-white px-2 py-1 text-[12px] text-[#506052]"
-                    key={note}
-                  >
-                    {note}
-                  </span>
-                ))}
+                <h3 className="text-2xl font-bold tracking-normal">Songs to try next</h3>
+                <p className="mt-1 text-sm text-[#a7a7a7]">
+                  {recommendations.length > 0
+                    ? "Ranked from listener-overlap sources and mapped back to Spotify."
+                    : emptyRecommendationMessage(sourceSummary)}
+                </p>
               </div>
             </div>
 
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            <div className="mt-4">
               {running ? (
-                <div className="col-span-full flex items-center gap-2 rounded-lg border border-[#dfe6d8] bg-white p-4 text-sm text-[#6b746c]">
-                  <Loader2 className="animate-spin" size={17} />
-                  Finding song twins
-                </div>
+                <LoadingPanel />
               ) : recommendations.length > 0 ? (
-                recommendations.map((track) => (
-                  <RecommendationCard key={`${track.rank}-${track.name}`} track={track} />
-                ))
-              ) : (
-                <div className="col-span-full rounded-lg border border-[#dfe6d8] bg-white p-4 text-sm text-[#6b746c]">
-                  No matches came back for this seed yet. Try another song, a broader playlist, or add a Last.fm API key for wider listener-overlap coverage.
+                <div className="overflow-hidden rounded-lg border border-[#242424]">
+                  <div className="grid grid-cols-[44px_minmax(0,1.6fr)_minmax(0,1fr)_92px] gap-3 border-b border-[#242424] bg-black/20 px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-[#a7a7a7] max-md:hidden">
+                    <span>#</span>
+                    <span>Title</span>
+                    <span>Signal</span>
+                    <span className="text-right">Fit</span>
+                  </div>
+                  <div className="divide-y divide-[#242424]">
+                    {recommendations.map((track) => (
+                      <RecommendationRow key={`${track.rank}-${track.name}`} track={track} />
+                    ))}
+                  </div>
                 </div>
+              ) : (
+                <EmptyPanel summary={sourceSummary} />
               )}
             </div>
           </div>
@@ -520,15 +558,15 @@ export function AppShell() {
 
 function StatusPill({ connected, loading }: { connected: boolean; loading: boolean }) {
   return (
-    <div className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#d2dbcb] bg-white px-3 text-sm">
+    <div className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#242424]">
       {loading ? (
-        <Loader2 className="animate-spin text-[#6b746c]" size={16} aria-hidden="true" />
+        <Loader2 className="animate-spin text-[#a7a7a7]" size={16} aria-hidden="true" />
       ) : connected ? (
         <CheckCircle2 className="text-[#1db954]" size={16} aria-hidden="true" />
       ) : (
-        <CircleAlert className="text-[#bc7a1d]" size={16} aria-hidden="true" />
+        <CircleAlert className="text-[#f5b84b]" size={16} aria-hidden="true" />
       )}
-      <span>{loading ? "Checking" : connected ? "Spotify linked" : "Demo mode"}</span>
+      <span className="sr-only">{loading ? "Checking" : connected ? "Spotify linked" : "Demo mode"}</span>
     </div>
   );
 }
@@ -543,12 +581,12 @@ function MiniStat({
   value: number;
 }) {
   return (
-    <div className="rounded-lg border border-[#dfe6d8] bg-[#f8faf5] p-3">
-      <div className="flex items-center justify-between gap-2 text-[#0b6b62]">
+    <div className="min-w-[70px] rounded-lg bg-black/30 px-3 py-2">
+      <div className="flex items-center gap-2 text-[#1db954]">
         {icon}
-        <span className="text-lg font-semibold text-[#17201b]">{value}</span>
+        <span className="text-sm font-bold text-white">{value}</span>
       </div>
-      <p className="mt-1 text-[12px] text-[#6b746c]">{label}</p>
+      <p className="mt-1 text-[11px] font-medium text-[#b3b3b3]">{label}</p>
     </div>
   );
 }
@@ -563,84 +601,219 @@ function PlaylistPreview({
   tracks: SimplifiedTrack[];
 }) {
   return (
-    <div className="mt-3">
-      <div className="flex items-center gap-3 rounded-lg border border-[#dfe6d8] bg-[#f8faf5] p-3">
-        <Cover src={playlist?.imageUrl} label={playlist?.name ?? "Playlist"} size="md" />
+    <div className="min-h-0">
+      <div className="flex items-center gap-3 rounded-lg bg-[#181818] p-3">
+        <Cover src={playlist?.imageUrl ?? tracks[0]?.imageUrl} label={playlist?.name ?? "Playlist"} size="md" />
         <div className="min-w-0">
-          <p className="truncate font-medium">{playlist?.name ?? "Playlist"}</p>
-          <p className="text-sm text-[#6b746c]">
-            {loading ? "Loading songs" : `${playlist?.totalTracks ?? tracks.length} songs`}
+          <p className="truncate text-sm font-semibold">{playlist?.name ?? "Playlist"}</p>
+          <p className="text-xs text-[#a7a7a7]">
+            {loading ? "Loading" : `${playlist?.totalTracks ?? tracks.length} songs`}
           </p>
         </div>
       </div>
-      <div className="mt-2 grid max-h-[248px] gap-1 overflow-auto">
+
+      <div className="mt-3 max-h-[52vh] overflow-auto pr-1">
         {loading ? (
-          <div className="flex items-center gap-2 p-2 text-sm text-[#6b746c]">
+          <div className="flex items-center gap-2 rounded-lg bg-[#181818] p-3 text-sm text-[#a7a7a7]">
             <Loader2 className="animate-spin" size={16} />
-            Loading
+            Loading songs
           </div>
-        ) : (
-          tracks.map((track) => (
-            <div className="flex items-center gap-2 rounded-lg px-2 py-1.5" key={`${track.id}-${track.name}`}>
+        ) : tracks.length > 0 ? (
+          tracks.map((track, index) => (
+            <div
+              className="grid grid-cols-[24px_38px_minmax(0,1fr)] items-center gap-2 rounded-lg px-2 py-2 text-sm transition hover:bg-[#242424]"
+              key={`${track.id}-${track.name}`}
+            >
+              <span className="text-right text-xs text-[#737373]">{index + 1}</span>
               <Cover src={track.imageUrl} label={track.name} size="xs" />
-              <div className="min-w-0 text-sm">
-                <p className="truncate font-medium">{track.name}</p>
-                <p className="truncate text-[#6b746c]">{track.artistName}</p>
+              <div className="min-w-0">
+                <p className="truncate font-medium text-[#f1f1f1]">{track.name}</p>
+                <p className="truncate text-xs text-[#a7a7a7]">{track.artistName}</p>
               </div>
             </div>
           ))
+        ) : (
+          <p className="rounded-lg bg-[#181818] p-3 text-sm text-[#a7a7a7]">No readable songs found.</p>
         )}
       </div>
     </div>
   );
 }
 
-function RecommendationCard({ track }: { track: Recommendation }) {
+function SearchResults({
+  connected,
+  query,
+  searching,
+  selectedTrack,
+  tracks,
+  onSelect,
+}: {
+  connected: boolean;
+  query: string;
+  searching: boolean;
+  selectedTrack: SimplifiedTrack | null;
+  tracks: SimplifiedTrack[];
+  onSelect: (track: SimplifiedTrack) => void;
+}) {
+  const trimmedQuery = query.trim();
+
   return (
-    <article className="rounded-lg border border-[#dfe6d8] bg-white p-3 shadow-sm">
-      <div className="flex gap-3">
-        <Cover src={track.imageUrl} label={track.name} size="lg" />
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <p className="truncate font-semibold">{track.name}</p>
-              <p className="truncate text-sm text-[#6b746c]">{track.artistName}</p>
-            </div>
-            <span className="shrink-0 rounded-lg bg-[#e8f8ed] px-2 py-1 text-[12px] font-semibold text-[#106a32]">
-              {track.score}
+    <div className="mt-3 grid gap-2">
+      {connected && trimmedQuery.length > 0 && trimmedQuery.length < 2 ? (
+        <p className="rounded-lg bg-[#181818] p-3 text-sm text-[#a7a7a7]">Keep typing.</p>
+      ) : null}
+      {connected && trimmedQuery.length >= 2 && searching ? (
+        <div className="flex items-center gap-2 rounded-lg bg-[#181818] p-3 text-sm text-[#a7a7a7]">
+          <Loader2 className="animate-spin" size={16} />
+          Searching Spotify
+        </div>
+      ) : null}
+      {connected && trimmedQuery.length >= 2 && !searching && tracks.length === 0 ? (
+        <p className="rounded-lg bg-[#181818] p-3 text-sm text-[#a7a7a7]">No songs found.</p>
+      ) : null}
+
+      {tracks.slice(0, 7).map((track) => (
+        <button
+          className={[
+            "grid grid-cols-[42px_minmax(0,1fr)] items-center gap-3 rounded-lg p-2 text-left text-sm transition",
+            selectedTrack?.id === track.id
+              ? "bg-[#1db954] text-black"
+              : "bg-[#181818] text-white hover:bg-[#242424]",
+          ].join(" ")}
+          key={`${track.id}-${track.name}`}
+          onClick={() => onSelect(track)}
+          type="button"
+        >
+          <Cover src={track.imageUrl} label={track.name} size="sm" />
+          <span className="min-w-0">
+            <span className="block truncate font-semibold">{track.name}</span>
+            <span
+              className={[
+                "block truncate text-xs",
+                selectedTrack?.id === track.id ? "text-black/75" : "text-[#a7a7a7]",
+              ].join(" ")}
+            >
+              {track.artistName}
             </span>
-          </div>
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
 
-          <div className="mt-3 h-2 overflow-hidden rounded-full bg-[#e4eadf]">
-            <div
-              className="h-full rounded-full bg-[#1db954]"
-              style={{ width: `${Math.max(4, Math.min(track.score, 100))}%` }}
-            />
-          </div>
+function RecommendationRow({ track }: { track: Recommendation }) {
+  return (
+    <article className="grid gap-3 bg-[#121212] px-3 py-3 transition hover:bg-[#1f1f1f] md:grid-cols-[44px_minmax(0,1.6fr)_minmax(0,1fr)_92px] md:items-center">
+      <div className="hidden text-sm text-[#a7a7a7] md:block">{track.rank}</div>
 
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <span className={signalClass(track.signal)}>{signalLabel(track.signal)}</span>
-            <span className="text-[12px] text-[#6b746c]">{track.confidence}% fit</span>
-          </div>
+      <div className="flex min-w-0 items-center gap-3">
+        <Cover src={track.imageUrl} label={track.name} size="sm" />
+        <div className="min-w-0">
+          <p className="truncate font-semibold text-white">{track.name}</p>
+          <p className="truncate text-sm text-[#a7a7a7]">{track.artistName}</p>
         </div>
       </div>
 
-      <p className="mt-3 truncate text-sm text-[#344238]">
-        Near {track.seedNames.slice(0, 3).join(", ")}
-      </p>
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={signalClass(track.signal)}>{signalLabel(track.signal)}</span>
+          <span className="text-xs text-[#a7a7a7]">
+            {track.support} source match{track.support === 1 ? "" : "es"}
+          </span>
+        </div>
+        <p className="mt-1 truncate text-xs text-[#737373]">Near {track.seedNames.slice(0, 3).join(", ")}</p>
+      </div>
 
-      {track.spotifyUrl || track.lastFmUrl ? (
-        <a
-          className="mt-3 inline-flex h-9 items-center gap-1 rounded-lg border border-[#d2dbcb] px-2 text-sm font-medium hover:bg-[#f3f6ef]"
-          href={track.spotifyUrl ?? track.lastFmUrl}
-          rel="noreferrer"
-          target="_blank"
-        >
-          Open
-          <ExternalLink size={14} aria-hidden="true" />
-        </a>
-      ) : null}
+      <div className="flex items-center justify-between gap-3 md:justify-end">
+        <div className="h-1.5 w-24 overflow-hidden rounded-full bg-[#333]">
+          <div
+            className="h-full rounded-full bg-[#1db954]"
+            style={{ width: `${Math.max(4, Math.min(track.score, 100))}%` }}
+          />
+        </div>
+        <span className="w-8 text-right text-sm font-bold text-white">{track.score}</span>
+        {track.spotifyUrl || track.lastFmUrl ? (
+          <a
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[#a7a7a7] transition hover:bg-[#333] hover:text-white"
+            href={track.spotifyUrl ?? track.lastFmUrl}
+            rel="noreferrer"
+            target="_blank"
+          >
+            <ExternalLink size={15} aria-hidden="true" />
+            <span className="sr-only">Open {track.name}</span>
+          </a>
+        ) : null}
+      </div>
     </article>
+  );
+}
+
+function LoadingPanel() {
+  return (
+    <div className="flex min-h-48 items-center justify-center rounded-lg border border-[#242424] bg-[#181818] text-sm text-[#a7a7a7]">
+      <div className="flex items-center gap-2">
+        <Loader2 className="animate-spin" size={18} />
+        Building listener graph
+      </div>
+    </div>
+  );
+}
+
+function EmptyPanel({ summary }: { summary: RecommendationResponse["sourceSummary"] }) {
+  return (
+    <div className="rounded-lg border border-[#242424] bg-[#181818] p-6">
+      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#242424] text-[#1db954]">
+        <Headphones size={22} aria-hidden="true" />
+      </div>
+      <h4 className="mt-4 text-lg font-bold">No listener-overlap songs yet</h4>
+      <p className="mt-2 max-w-2xl text-sm leading-6 text-[#b3b3b3]">
+        {emptyRecommendationMessage(summary)}
+      </p>
+      {!summary.lastFmConfigured ? (
+        <p className="mt-3 max-w-2xl text-sm leading-6 text-[#b3b3b3]">
+          A Last.fm API key gives SongTwin a wider track similarity graph than the no-key ListenBrainz fallback.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function SourceNotes({ notes }: { notes: string[] }) {
+  if (notes.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="mt-4 flex flex-wrap gap-2">
+      {notes.slice(0, 3).map((note) => (
+        <span className="rounded-full bg-[#242424] px-3 py-1.5 text-xs font-medium text-[#d8d8d8]" key={note}>
+          {note}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function Alert({
+  children,
+  icon,
+  tone,
+}: {
+  children: ReactNode;
+  icon: ReactNode;
+  tone: "error" | "warn";
+}) {
+  const className =
+    tone === "error"
+      ? "border-[#5b2a2a] bg-[#2a1212] text-[#ffd8d8]"
+      : "border-[#5f4a1a] bg-[#2a2111] text-[#ffe1a3]";
+
+  return (
+    <div className={`mt-4 flex items-start gap-3 rounded-lg border p-3 text-sm ${className}`}>
+      <span className="mt-0.5 shrink-0">{icon}</span>
+      <span>{children}</span>
+    </div>
   );
 }
 
@@ -651,19 +824,26 @@ function Cover({
 }: {
   src?: string;
   label: string;
-  size: "xs" | "sm" | "md" | "lg";
+  size: "xs" | "sm" | "md" | "hero";
 }) {
   const sizeClass =
-    size === "xs" ? "h-8 w-8" : size === "sm" ? "h-10 w-10" : size === "md" ? "h-12 w-12" : "h-20 w-20";
+    size === "xs"
+      ? "h-8 w-8 rounded"
+      : size === "sm"
+        ? "h-11 w-11 rounded"
+        : size === "md"
+          ? "h-14 w-14 rounded"
+          : "h-40 w-40 rounded-lg sm:h-48 sm:w-48";
+  const iconSize = size === "xs" ? 14 : size === "hero" ? 44 : 20;
 
   return (
     <div
-      className={`${sizeClass} flex shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#e8eee4] text-[#0b6b62]`}
+      className={`${sizeClass} flex shrink-0 items-center justify-center overflow-hidden bg-[#282828] text-[#1db954] shadow-lg shadow-black/20`}
     >
       {src ? (
         <img alt={`${label} artwork`} className="h-full w-full object-cover" src={src} />
       ) : (
-        <Music2 size={size === "xs" ? 15 : 20} aria-hidden="true" />
+        <Music2 size={iconSize} aria-hidden="true" />
       )}
     </div>
   );
@@ -672,15 +852,44 @@ function Cover({
 function SourceBadge({ summary }: { summary: RecommendationResponse["sourceSummary"] }) {
   const label =
     summary.provider === "lastfm"
-      ? "Co-listening"
+      ? "Last.fm graph"
       : summary.provider === "listenbrainz"
-        ? "Listener graph"
-      : summary.provider === "demo"
-        ? "Demo graph"
-        : "Fallback";
+        ? "ListenBrainz graph"
+        : summary.provider === "demo"
+          ? "Demo graph"
+          : "Needs data";
 
   return (
-    <span className="rounded-lg bg-[#17201b] px-2 py-1 text-[12px] font-semibold text-white">
+    <span className="inline-flex h-8 items-center rounded-full bg-black/30 px-3 text-xs font-bold text-white">
+      {label}
+    </span>
+  );
+}
+
+function GraphHealth({
+  connected,
+  graphReady,
+  needsLastFm,
+}: {
+  connected: boolean;
+  graphReady: boolean;
+  needsLastFm: boolean;
+}) {
+  const label = !connected
+    ? "Demo"
+    : graphReady
+      ? "Co-listening"
+      : needsLastFm
+        ? "Add Last.fm key"
+        : "Ready";
+  const className = graphReady
+    ? "bg-[#1db954] text-black"
+    : needsLastFm
+      ? "bg-[#f5b84b] text-black"
+      : "bg-[#242424] text-[#d8d8d8]";
+
+  return (
+    <span className={`inline-flex h-8 items-center rounded-full px-3 text-xs font-bold ${className}`}>
       {label}
     </span>
   );
@@ -688,38 +897,46 @@ function SourceBadge({ summary }: { summary: RecommendationResponse["sourceSumma
 
 function modeButtonClass(active: boolean) {
   return [
-    "inline-flex h-10 items-center justify-center gap-2 rounded-lg text-sm font-semibold",
-    active ? "bg-white text-[#19211d] shadow-sm" : "text-[#566156] hover:bg-white/60",
+    "inline-flex h-10 items-center justify-center gap-2 rounded-lg text-sm font-bold transition",
+    active ? "bg-[#1db954] text-black" : "text-[#b3b3b3] hover:bg-[#242424] hover:text-white",
   ].join(" ");
 }
 
 function signalLabel(signal: Recommendation["signal"]) {
   if (signal === "lastfm-co-listening") {
-    return "Listeners";
+    return "Last.fm listeners";
   }
 
   if (signal === "listenbrainz-collaborative") {
-    return "Listeners";
+    return "ListenBrainz listeners";
   }
 
   if (signal === "demo-co-listening") {
-    return "Demo";
+    return "Demo graph";
   }
 
-  return "Artist";
+  return "Catalog";
 }
 
 function signalClass(signal: Recommendation["signal"]) {
-  const base = "inline-flex rounded-lg px-2 py-1 text-[12px] font-semibold";
+  const base = "inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold";
   if (signal === "lastfm-co-listening" || signal === "listenbrainz-collaborative") {
-    return `${base} bg-[#e8f8ed] text-[#106a32]`;
+    return `${base} bg-[#1db954] text-black`;
   }
 
   if (signal === "demo-co-listening") {
-    return `${base} bg-[#e8f1f7] text-[#315a7d]`;
+    return `${base} bg-[#315a7d] text-white`;
   }
 
-  return `${base} bg-[#fff1dd] text-[#895511]`;
+  return `${base} bg-[#f5b84b] text-black`;
+}
+
+function emptyRecommendationMessage(summary: RecommendationResponse["sourceSummary"]) {
+  if (!summary.lastFmConfigured) {
+    return "ListenBrainz did not return cross-artist listener matches for this seed. SongTwin is hiding same-artist Spotify catalog filler; add LASTFM_API_KEY for the stronger co-listening graph.";
+  }
+
+  return "No cross-artist listener matches came back for this seed. Try a broader playlist or a different source song.";
 }
 
 function oauthErrorMessage(error: string) {
