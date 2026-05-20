@@ -5,7 +5,7 @@ SongTwin is a consumer Spotify web app for finding songs similar to a playlist o
 ## Features
 
 - Spotify login with PKCE and encrypted HTTP-only session cookies.
-- Choose one of your Spotify playlists or search for a single song.
+- Choose Liked Songs, a playlist you own/collaborate on, or search for a single song.
 - Generate ranked song matches from listener-overlap data.
 - Use Last.fm `track.getSimilar` when a Last.fm API key is configured.
 - Fall back to ListenBrainz collaborative-listening data when Last.fm is not configured.
@@ -17,7 +17,7 @@ SongTwin is a consumer Spotify web app for finding songs similar to a playlist o
 
 Spotify announced on November 27, 2024 that new Web API use cases can no longer access several endpoints and features, including recommendations, related artists, audio features, and audio analysis. Spotify also does not expose a public global graph of who liked which tracks.
 
-SongTwin therefore uses Spotify for identity, playlist access, search, and track links. The “people who liked/listened to this also liked/listened to” signal comes from collaborative-listening sources:
+SongTwin therefore uses Spotify for identity, readable user sources, search, and track links. Spotify's current playlist-items endpoint only returns tracks for playlists owned by the current user or playlists where the user is a collaborator, so followed/editorial playlists are intentionally not shown as seed sources. The “people who liked/listened to this also liked/listened to” signal comes from collaborative-listening sources:
 
 - Last.fm `track.getSimilar` when `LASTFM_API_KEY` is configured.
 - ListenBrainz Labs similar recordings as a no-key collaborative fallback.
@@ -27,6 +27,7 @@ References:
 
 - [Spotify Web API changes](https://developer.spotify.com/blog/2024-11-27-changes-to-the-web-api)
 - [Spotify Authorization Code with PKCE](https://developer.spotify.com/documentation/web-api/tutorials/code-pkce-flow)
+- [Spotify Get Playlist Items](https://developer.spotify.com/documentation/web-api/reference/get-playlists-items)
 - [Last.fm track.getSimilar](https://www.last.fm/api/show/track.getSimilar)
 - [ListenBrainz Labs similar recordings](https://labs.api.listenbrainz.org/similar-recordings)
 

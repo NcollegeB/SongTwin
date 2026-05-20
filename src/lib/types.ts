@@ -19,7 +19,10 @@ export type PlaylistSummary = {
   id: string;
   name: string;
   owner: string;
+  ownerId?: string;
   totalTracks: number;
+  collaborative?: boolean;
+  source?: "liked" | "playlist";
   imageUrl?: string;
   spotifyUrl?: string;
 };

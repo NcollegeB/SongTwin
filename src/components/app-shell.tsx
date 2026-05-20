@@ -73,6 +73,52 @@ export function AppShell() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (mode !== "song" || !connected) {
+      return;
+    }
+
+    const query = searchTerm.trim();
+    if (query.length < 2) {
+      window.setTimeout(() => setSearchResults([]), 0);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(async () => {
+      setSearching(true);
+
+      try {
+        const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`, {
+          signal: controller.signal,
+        });
+        const payload = (await response.json().catch(() => ({}))) as {
+          tracks?: SimplifiedTrack[];
+          error?: string;
+        };
+
+        if (!response.ok) {
+          throw new Error(payload.error || `Search failed: ${response.status}`);
+        }
+
+        setSearchResults(payload.tracks ?? []);
+      } catch (caught) {
+        if (!controller.signal.aborted) {
+          setError(caught instanceof Error ? caught.message : "Search failed.");
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setSearching(false);
+        }
+      }
+    }, 280);
+
+    return () => {
+      controller.abort();
+      window.clearTimeout(timeout);
+    };
+  }, [connected, mode, searchTerm]);
+
   async function fetchJson<T>(url: string, init?: RequestInit) {
     const response = await fetch(url, init);
     const payload = await response.json().catch(() => ({}));
@@ -138,12 +184,16 @@ export function AppShell() {
     }
 
     try {
+      const endpoint =
+        playlistId === "liked-songs"
+          ? "/api/library/tracks"
+          : `/api/playlists/${encodeURIComponent(playlistId)}/tracks`;
       const payload = await fetchJson<{ tracks: SimplifiedTrack[] }>(
-        `/api/playlists/${encodeURIComponent(playlistId)}/tracks`,
+        endpoint,
       );
       setTracks(payload.tracks);
       setSelectedTrack(payload.tracks[0] ?? null);
-      return true;
+      return payload.tracks.length > 0;
     } catch (caught) {
       if (!quiet) {
         setError(caught instanceof Error ? caught.message : "Unable to load that playlist.");
@@ -313,7 +363,7 @@ export function AppShell() {
             {mode === "playlist" ? (
               <div className="mt-4">
                 <label className="text-sm font-medium text-[#344238]" htmlFor="playlist">
-                  Your playlist
+                  Your source
                 </label>
                 <select
                   className="mt-2 h-11 w-full rounded-lg border border-[#d2dbcb] bg-white px-3 text-sm"
@@ -323,10 +373,13 @@ export function AppShell() {
                 >
                   {playlists.map((playlist) => (
                     <option key={playlist.id} value={playlist.id}>
-                      {playlist.name}
+                      {playlist.source === "liked" ? "Liked Songs" : playlist.name}
                     </option>
                   ))}
                 </select>
+                <p className="mt-2 text-[12px] leading-5 text-[#6b746c]">
+                  Spotify only allows this app to read Liked Songs and playlists you own or collaborate on.
+                </p>
 
                 <PlaylistPreview
                   loading={loadingTracks}
@@ -357,7 +410,26 @@ export function AppShell() {
                 </form>
 
                 <div className="mt-3 grid gap-2">
-                  {(searchResults.length ? searchResults : demoTracks).slice(0, 5).map((track) => (
+                  {connected && searchTerm.trim().length < 2 ? (
+                    <p className="rounded-lg border border-[#dfe6d8] bg-[#f8faf5] p-3 text-sm text-[#6b746c]">
+                      Type at least two characters to search Spotify.
+                    </p>
+                  ) : null}
+                  {connected && searchTerm.trim().length >= 2 && searching ? (
+                    <div className="flex items-center gap-2 rounded-lg border border-[#dfe6d8] bg-[#f8faf5] p-3 text-sm text-[#6b746c]">
+                      <Loader2 className="animate-spin" size={16} />
+                      Searching Spotify
+                    </div>
+                  ) : null}
+                  {connected &&
+                  searchTerm.trim().length >= 2 &&
+                  !searching &&
+                  searchResults.length === 0 ? (
+                    <p className="rounded-lg border border-[#dfe6d8] bg-[#f8faf5] p-3 text-sm text-[#6b746c]">
+                      No songs found yet.
+                    </p>
+                  ) : null}
+                  {(!connected ? demoTracks : searchResults).slice(0, 6).map((track) => (
                     <button
                       className={[
                         "flex items-center gap-3 rounded-lg border p-2 text-left text-sm transition",

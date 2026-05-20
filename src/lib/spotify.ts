@@ -46,11 +46,13 @@ type SpotifyTrack = {
 type SpotifyPaging<T> = {
   items: T[];
   next?: string | null;
+  total?: number;
 };
 
 type SpotifyPlaylistItem = {
   id: string;
   name: string;
+  collaborative?: boolean;
   images?: SpotifyImage[];
   owner?: { display_name?: string; id?: string };
   tracks?: { total?: number };
@@ -59,6 +61,7 @@ type SpotifyPlaylistItem = {
 
 type SpotifyPlaylistTrackItem = {
   track?: SpotifyTrack | null;
+  item?: SpotifyTrack | null;
 };
 
 type TokenResponse = {
@@ -236,21 +239,31 @@ export async function fetchCurrentUser(session: SpotifyTokenSession): Promise<Sp
   };
 }
 
-export async function fetchPlaylists(session: SpotifyTokenSession) {
-  const playlists: PlaylistSummary[] = [];
+export async function fetchReadablePlaylists(
+  session: SpotifyTokenSession,
+  currentUserId: string,
+) {
+  const playlists: PlaylistSummary[] = [await fetchLikedSongsSummary(session)];
   let next: string | null | undefined = "/me/playlists?limit=50";
 
   while (next && playlists.length < 200) {
     const page: SpotifyPaging<SpotifyPlaylistItem> = await spotifyFetch(session, next);
     playlists.push(
-      ...page.items.map((playlist) => ({
-        id: playlist.id,
-        name: playlist.name,
-        owner: playlist.owner?.display_name || playlist.owner?.id || "Spotify",
-        totalTracks: playlist.tracks?.total ?? 0,
-        imageUrl: bestImage(playlist.images),
-        spotifyUrl: playlist.external_urls?.spotify,
-      })),
+      ...page.items
+        .filter((playlist) => {
+          return playlist.owner?.id === currentUserId || Boolean(playlist.collaborative);
+        })
+        .map((playlist) => ({
+          id: playlist.id,
+          name: playlist.name,
+          owner: playlist.owner?.display_name || playlist.owner?.id || "Spotify",
+          ownerId: playlist.owner?.id,
+          totalTracks: playlist.tracks?.total ?? 0,
+          collaborative: playlist.collaborative,
+          source: "playlist" as const,
+          imageUrl: bestImage(playlist.images),
+          spotifyUrl: playlist.external_urls?.spotify,
+        })),
     );
     next = page.next;
   }
@@ -282,7 +295,7 @@ export async function fetchPlaylistTracks(session: SpotifyTokenSession, playlist
 
     tracks.push(
       ...page.items
-        .map((item) => item.track)
+        .map((playlistItem) => playlistItem.item ?? playlistItem.track)
         .filter((track): track is SpotifyTrack => Boolean(track && !track.is_local))
         .map(simplifyTrack),
     );
@@ -294,25 +307,25 @@ export async function fetchPlaylistTracks(session: SpotifyTokenSession, playlist
 
 function playlistTracksPath(playlistId: string, withFields: boolean) {
   const params = new URLSearchParams({
-    limit: "100",
+    limit: "50",
   });
 
   if (withFields) {
     params.set(
       "fields",
-      "items(track(id,name,duration_ms,popularity,is_local,external_urls,artists(id,name),album(name,images))),next",
+      "items(item(id,name,duration_ms,popularity,is_local,external_urls,artists(id,name),album(name,images))),next",
     );
   }
 
-  return `/playlists/${encodeURIComponent(playlistId)}/tracks?${params}`;
+  return `/playlists/${encodeURIComponent(playlistId)}/items?${params}`;
 }
 
 export async function searchTracks(session: SpotifyTokenSession, query: string, limit = 12) {
+  const safeLimit = Math.max(1, Math.min(limit, 10));
   const params = new URLSearchParams({
     q: query,
     type: "track",
-    limit: String(limit),
-    market: "from_token",
+    limit: String(safeLimit),
   });
 
   const data = await spotifyFetch<{ tracks: SpotifyPaging<SpotifyTrack> }>(
@@ -321,6 +334,39 @@ export async function searchTracks(session: SpotifyTokenSession, query: string, 
   );
 
   return data.tracks.items.map(simplifyTrack);
+}
+
+export async function fetchSavedTracks(session: SpotifyTokenSession, limit = 300) {
+  const tracks: SimplifiedTrack[] = [];
+  let next: string | null | undefined = "/me/tracks?limit=50";
+
+  while (next && tracks.length < limit) {
+    const page: SpotifyPaging<SpotifyPlaylistTrackItem> = await spotifyFetch(session, next);
+    tracks.push(
+      ...page.items
+        .map((savedTrack) => savedTrack.track)
+        .filter((track): track is SpotifyTrack => Boolean(track && !track.is_local))
+        .map(simplifyTrack),
+    );
+    next = page.next;
+  }
+
+  return tracks;
+}
+
+async function fetchLikedSongsSummary(session: SpotifyTokenSession): Promise<PlaylistSummary> {
+  const page: SpotifyPaging<SpotifyPlaylistTrackItem> = await spotifyFetch(
+    session,
+    "/me/tracks?limit=1",
+  );
+
+  return {
+    id: "liked-songs",
+    name: "Liked Songs",
+    owner: "You",
+    totalTracks: page.total ?? 0,
+    source: "liked",
+  };
 }
 
 export async function searchBestTrack(
