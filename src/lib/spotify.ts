@@ -71,11 +71,15 @@ type TokenResponse = {
 
 export class SpotifyApiError extends Error {
   status: number;
+  details?: string;
+  path?: string;
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, details?: string, path?: string) {
     super(message);
     this.name = "SpotifyApiError";
     this.status = status;
+    this.details = details;
+    this.path = path;
   }
 }
 
@@ -202,7 +206,13 @@ export async function spotifyFetch<T>(
   });
 
   if (!response.ok) {
-    throw new SpotifyApiError(`Spotify API request failed: ${pathOrUrl}`, response.status);
+    const details = await response.text().catch(() => "");
+    throw new SpotifyApiError(
+      spotifyErrorMessage(pathOrUrl, response.status, details),
+      response.status,
+      details,
+      pathOrUrl,
+    );
   }
 
   return (await response.json()) as T;
@@ -250,11 +260,26 @@ export async function fetchPlaylists(session: SpotifyTokenSession) {
 
 export async function fetchPlaylistTracks(session: SpotifyTokenSession, playlistId: string) {
   const tracks: SimplifiedTrack[] = [];
-  let next: string | null | undefined =
-    `/playlists/${encodeURIComponent(playlistId)}/tracks?limit=100&fields=items(track(id,name,duration_ms,popularity,is_local,external_urls,artists(id,name),album(name,images))),next`;
+  let next: string | null | undefined = playlistTracksPath(playlistId, true);
 
   while (next && tracks.length < 300) {
-    const page: SpotifyPaging<SpotifyPlaylistTrackItem> = await spotifyFetch(session, next);
+    let page: SpotifyPaging<SpotifyPlaylistTrackItem>;
+
+    try {
+      page = await spotifyFetch(session, next);
+    } catch (error) {
+      if (
+        error instanceof SpotifyApiError &&
+        error.status === 400 &&
+        next.includes("fields=")
+      ) {
+        next = playlistTracksPath(playlistId, false);
+        page = await spotifyFetch(session, next);
+      } else {
+        throw error;
+      }
+    }
+
     tracks.push(
       ...page.items
         .map((item) => item.track)
@@ -265,6 +290,21 @@ export async function fetchPlaylistTracks(session: SpotifyTokenSession, playlist
   }
 
   return tracks;
+}
+
+function playlistTracksPath(playlistId: string, withFields: boolean) {
+  const params = new URLSearchParams({
+    limit: "100",
+  });
+
+  if (withFields) {
+    params.set(
+      "fields",
+      "items(track(id,name,duration_ms,popularity,is_local,external_urls,artists(id,name),album(name,images))),next",
+    );
+  }
+
+  return `/playlists/${encodeURIComponent(playlistId)}/tracks?${params}`;
 }
 
 export async function searchTracks(session: SpotifyTokenSession, query: string, limit = 12) {
@@ -353,4 +393,34 @@ function isLikelySameTrack(track: SimplifiedTrack, candidate: { name: string; ar
       candidateName.includes(trackName)) &&
     sameArtist(track.artistName, candidate.artistName)
   );
+}
+
+function spotifyErrorMessage(pathOrUrl: string, status: number, details: string) {
+  const spotifyMessage = parseSpotifyErrorMessage(details);
+  const reason = spotifyMessage ? `: ${spotifyMessage}` : "";
+
+  if (status === 403 && pathOrUrl.includes("/playlists/")) {
+    return `Spotify denied access to that playlist's tracks${reason}. Try another playlist, or disconnect and reconnect Spotify to refresh playlist permissions.`;
+  }
+
+  if (status === 401) {
+    return `Spotify session expired${reason}. Disconnect and reconnect Spotify.`;
+  }
+
+  return `Spotify API request failed (${status})${reason}`;
+}
+
+function parseSpotifyErrorMessage(details: string) {
+  if (!details) {
+    return "";
+  }
+
+  try {
+    const parsed = JSON.parse(details) as {
+      error?: { message?: string };
+    };
+    return parsed.error?.message ?? "";
+  } catch {
+    return details.slice(0, 180);
+  }
 }

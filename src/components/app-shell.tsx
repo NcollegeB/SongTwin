@@ -104,10 +104,7 @@ export function AppShell() {
 
       const playlistPayload = await fetchJson<{ playlists: PlaylistSummary[] }>("/api/playlists");
       setPlaylists(playlistPayload.playlists);
-      const firstPlaylist = playlistPayload.playlists[0];
-      if (firstPlaylist) {
-        await loadPlaylistTracks(firstPlaylist.id, true);
-      }
+      await loadFirstAvailablePlaylist(playlistPayload.playlists);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to load your Spotify account.");
     } finally {
@@ -115,17 +112,30 @@ export function AppShell() {
     }
   }
 
-  async function loadPlaylistTracks(playlistId: string, forceLive = false) {
+  async function loadFirstAvailablePlaylist(candidatePlaylists: PlaylistSummary[]) {
+    for (const playlist of candidatePlaylists.slice(0, 8)) {
+      const loaded = await loadPlaylistTracks(playlist.id, true, true);
+      if (loaded) {
+        return;
+      }
+    }
+
+    setError("Spotify denied the first few playlist track lists. Try searching for a song instead.");
+  }
+
+  async function loadPlaylistTracks(playlistId: string, forceLive = false, quiet = false) {
     setSelectedPlaylistId(playlistId);
 
     if (!connected && !forceLive) {
       setTracks(demoTracks);
       setSelectedTrack(demoTracks[0]);
-      return;
+      return true;
     }
 
     setLoadingTracks(true);
-    setError(null);
+    if (!quiet) {
+      setError(null);
+    }
 
     try {
       const payload = await fetchJson<{ tracks: SimplifiedTrack[] }>(
@@ -133,8 +143,12 @@ export function AppShell() {
       );
       setTracks(payload.tracks);
       setSelectedTrack(payload.tracks[0] ?? null);
+      return true;
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unable to load that playlist.");
+      if (!quiet) {
+        setError(caught instanceof Error ? caught.message : "Unable to load that playlist.");
+      }
+      return false;
     } finally {
       setLoadingTracks(false);
     }
