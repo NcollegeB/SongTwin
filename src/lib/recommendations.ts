@@ -291,9 +291,7 @@ async function artistCatalogFallback(
 
   await Promise.all(
     seeds.map(async (seed) => {
-      const tracks = seed.artistId
-        ? await fetchArtistTopTracks(session, seed.artistId).catch(() => [])
-        : await searchTracks(session, `artist:${primaryArtist(seed.artistName)}`, 8).catch(() => []);
+      const tracks = await getFallbackTracksForSeed(session, seed);
 
       for (const track of tracks) {
         if (isSeed(track, seeds)) {
@@ -335,6 +333,44 @@ async function artistCatalogFallback(
       seedNames: [...track.supportSeeds],
       matchedOnSpotify: true,
     }));
+}
+
+async function getFallbackTracksForSeed(
+  session: SpotifyTokenSession,
+  seed: SimplifiedTrack,
+) {
+  const collected = new Map<string, SimplifiedTrack>();
+  const addTracks = (tracks: SimplifiedTrack[]) => {
+    for (const track of tracks) {
+      collected.set(trackKey(track), track);
+    }
+  };
+
+  if (seed.artistId) {
+    addTracks(await fetchArtistTopTracks(session, seed.artistId).catch(() => []));
+  }
+
+  if (collected.size < 3) {
+    addTracks(
+      await searchTracks(session, `artist:${primaryArtist(seed.artistName)}`, 10).catch(
+        () => [],
+      ),
+    );
+  }
+
+  if (collected.size < 3) {
+    addTracks(await searchTracks(session, primaryArtist(seed.artistName), 10).catch(() => []));
+  }
+
+  if (collected.size < 3 && seed.albumName) {
+    addTracks(
+      await searchTracks(session, `${seed.albumName} ${primaryArtist(seed.artistName)}`, 10).catch(
+        () => [],
+      ),
+    );
+  }
+
+  return [...collected.values()];
 }
 
 function dedupeTracks(tracks: SimplifiedTrack[]) {

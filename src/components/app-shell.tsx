@@ -101,7 +101,14 @@ export function AppShell() {
           throw new Error(payload.error || `Search failed: ${response.status}`);
         }
 
-        setSearchResults(payload.tracks ?? []);
+        const tracks = payload.tracks ?? [];
+        setSearchResults(tracks);
+        if (tracks.length > 0) {
+          setSelectedTrack((currentTrack) => {
+            const currentIsVisible = tracks.some((track) => track.id === currentTrack?.id);
+            return currentIsVisible ? currentTrack : tracks[0];
+          });
+        }
       } catch (caught) {
         if (!controller.signal.aborted) {
           setError(caught instanceof Error ? caught.message : "Search failed.");
@@ -489,9 +496,20 @@ export function AppShell() {
             </div>
 
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {recommendations.map((track) => (
-                <RecommendationCard key={`${track.rank}-${track.name}`} track={track} />
-              ))}
+              {running ? (
+                <div className="col-span-full flex items-center gap-2 rounded-lg border border-[#dfe6d8] bg-white p-4 text-sm text-[#6b746c]">
+                  <Loader2 className="animate-spin" size={17} />
+                  Finding song twins
+                </div>
+              ) : recommendations.length > 0 ? (
+                recommendations.map((track) => (
+                  <RecommendationCard key={`${track.rank}-${track.name}`} track={track} />
+                ))
+              ) : (
+                <div className="col-span-full rounded-lg border border-[#dfe6d8] bg-white p-4 text-sm text-[#6b746c]">
+                  No matches came back for this seed yet. Try another song, a broader playlist, or add a Last.fm API key for wider listener-overlap coverage.
+                </div>
+              )}
             </div>
           </div>
         </section>
