@@ -13,9 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SongTwin - Listener-overlap song recommendations",
+  title: "SongTwin - Find your next perfect song",
   description:
-    "A paid Spotify-connected app for finding songs similar to a playlist or track using listener-overlap data.",
+    "A Spotify-powered song discovery app that helps you find tracks that fit the music you already love.",
 };
 
 export default function RootLayout({

@@ -85,7 +85,7 @@ npm run dev
 
 SongTwin is a standard Next.js app and can deploy to Vercel from the GitHub repo or the Vercel CLI.
 
-[Deploy from GitHub on Vercel](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FNcollegeB%2FSongTwin&project-name=song-twin&repository-name=SongTwin&env=SPOTIFY_CLIENT_ID,SPOTIFY_REDIRECT_URI,SESSION_SECRET,LASTFM_API_KEY,MUSICBRAINZ_USER_AGENT)
+[Deploy from GitHub on Vercel](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FNcollegeB%2FSongTwin&project-name=song-twin&repository-name=SongTwin&env=SPOTIFY_CLIENT_ID,SPOTIFY_REDIRECT_URI,SESSION_SECRET,LASTFM_API_KEY,MUSICBRAINZ_USER_AGENT,NEXT_PUBLIC_FIREBASE_API_KEY,NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,NEXT_PUBLIC_FIREBASE_PROJECT_ID,NEXT_PUBLIC_FIREBASE_APP_ID,FIREBASE_SERVICE_ACCOUNT_BASE64,STRIPE_SECRET_KEY,STRIPE_PRICE_ID,STRIPE_WEBHOOK_SECRET)
 
 Required production environment variables:
 
@@ -118,7 +118,8 @@ When this repo is connected to Vercel through the GitHub integration, pushes to 
 
 1. In Firebase, create a web app, enable Email/Password authentication, and create/download a service account key for the Admin SDK.
 2. In Stripe, create a product named `SongTwin Pro` and a recurring monthly Price for `$4.99`.
-3. Add the Stripe webhook endpoint:
+3. Copy the recurring Price ID that starts with `price_`. Do not use the Product ID that starts with `prod_`.
+4. Add the Stripe webhook endpoint:
 
 ```text
 https://your-vercel-domain.vercel.app/api/stripe/webhook
@@ -135,7 +136,8 @@ invoice.paid
 invoice.payment_failed
 ```
 
-4. Add the Firebase and Stripe environment variables in Vercel, then redeploy.
+5. Copy the webhook signing secret that starts with `whsec_`.
+6. Add the Firebase and Stripe environment variables in Vercel, then redeploy.
 
 CLI flow:
 

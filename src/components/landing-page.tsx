@@ -5,8 +5,11 @@ import type { ReactNode } from "react";
 import {
   ArrowRight,
   CheckCircle2,
+  Compass,
   Headphones,
+  Heart,
   Library,
+  Mail,
   Music2,
   Radio,
   Search,
@@ -24,7 +27,7 @@ const albumImages = [
 export function LandingPage() {
   return (
     <main className="bg-black text-white">
-      <section className="relative min-h-[92vh] overflow-hidden">
+      <section className="relative min-h-[92vh] overflow-hidden" id="home">
         <HeroBackdrop />
         <div className="absolute inset-0 bg-black/58" />
         <div className="relative z-10 mx-auto flex min-h-[92vh] w-full max-w-7xl flex-col px-5 py-5 sm:px-8">
@@ -35,12 +38,19 @@ export function LandingPage() {
               </span>
               <span className="text-xl font-black tracking-normal">SongTwin</span>
             </Link>
+            <div className="hidden items-center gap-7 text-sm font-bold text-[#d8d8d8] lg:flex">
+              <a className="hover:text-white" href="#home">Home</a>
+              <a className="hover:text-white" href="#about">About</a>
+              <a className="hover:text-white" href="#pricing">Pricing</a>
+              <a className="hover:text-white" href="#contact">Contact</a>
+            </div>
             <div className="flex items-center gap-2">
-              <Link className="connect-button secondary hidden sm:inline-flex" href="/app">
+              <Link className="connect-button secondary hidden xl:inline-flex" href="/app">
                 Sign in
               </Link>
               <Link className="connect-button" href="/app">
-                Start for $4.99
+                <span className="sm:hidden">Start</span>
+                <span className="hidden sm:inline">Start listening</span>
                 <ArrowRight size={16} aria-hidden="true" />
               </Link>
             </div>
@@ -50,21 +60,21 @@ export function LandingPage() {
             <div className="max-w-3xl">
               <p className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-sm font-bold text-[#d8f7e2] ring-1 ring-white/15">
                 <Sparkles size={15} aria-hidden="true" />
-                Listener-overlap recommendations for Spotify
+                Spotify-powered discovery for people who want better recommendations
               </p>
-              <h1 className="mt-6 text-6xl font-black tracking-normal sm:text-7xl lg:text-8xl">
-                SongTwin
+              <h1 className="mt-6 max-w-4xl text-5xl font-black leading-[1.02] tracking-normal sm:text-7xl lg:text-8xl">
+                Find your next perfect song.
               </h1>
               <p className="mt-6 max-w-2xl text-xl leading-9 text-[#e6eee9]">
-                Find songs that match the audience around a playlist or track. SongTwin uses Spotify for your sources, then ranks matches from co-listening signals across Last.fm and ListenBrainz.
+                SongTwin starts with a song or playlist you already love, then finds tracks that fit the same listener taste. Less random browsing. Fewer same-artist repeats. More songs that actually feel right.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <Link className="connect-button min-h-12 px-6" href="/app">
-                  Subscribe for $4.99/mo
+                  Find songs now
                   <ArrowRight size={18} aria-hidden="true" />
                 </Link>
-                <a className="connect-button secondary min-h-12 px-6" href="#how-it-works">
-                  How it works
+                <a className="connect-button secondary min-h-12 px-6" href="#pricing">
+                  See pricing
                 </a>
               </div>
             </div>
@@ -72,27 +82,54 @@ export function LandingPage() {
         </div>
       </section>
 
-      <section className="border-y border-[#242424] bg-[#0b0b0b] px-5 py-12 sm:px-8" id="how-it-works">
-        <div className="mx-auto grid max-w-7xl gap-5 md:grid-cols-3">
-          <Feature icon={<Library size={20} />} title="Choose a source" text="Connect Spotify, then pick Liked Songs, a playlist, or a searched track." />
-          <Feature icon={<Radio size={20} />} title="Build the graph" text="SongTwin checks co-listening sources for tracks that move with the same audience." />
-          <Feature icon={<Headphones size={20} />} title="Open the matches" text="Every ranked match is mapped back to Spotify when a catalog result is available." />
+      <section className="border-y border-[#242424] bg-[#0b0b0b] px-5 py-16 sm:px-8" id="about">
+        <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
+          <div>
+            <p className="text-sm font-bold uppercase tracking-[0.14em] text-[#1db954]">About SongTwin</p>
+            <h2 className="mt-3 max-w-3xl text-4xl font-black tracking-normal sm:text-5xl">
+              Built for the moment when your playlist needs one more great song.
+            </h2>
+            <p className="mt-5 max-w-3xl text-lg leading-8 text-[#b3b3b3]">
+              Search a track, pick a playlist, or start from your liked songs. SongTwin looks for music connected by shared listener behavior and brings the best matches back into a clean Spotify-ready view.
+            </p>
+            <div className="mt-8 grid gap-4 sm:grid-cols-3">
+              <Feature icon={<Heart size={20} />} title="Start with taste" text="Use a song or playlist that already matches your mood." />
+              <Feature icon={<Compass size={20} />} title="Go past obvious" text="Surface tracks connected by listener patterns, not just artist catalog filler." />
+              <Feature icon={<Headphones size={20} />} title="Play it fast" text="Open matched songs in Spotify and keep building from what works." />
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-[#2a2a2a] bg-[#121212] p-5">
+            <p className="text-sm font-bold uppercase tracking-[0.14em] text-[#1db954]">Why it feels different</p>
+            <div className="mt-5 grid gap-4">
+              {[
+                "Good for digging past overplayed recommendations.",
+                "Good for building playlists around a specific song feeling.",
+                "Good for finding cross-artist matches that still make sense.",
+              ].map((item) => (
+                <div className="flex items-start gap-3" key={item}>
+                  <CheckCircle2 className="mt-0.5 shrink-0 text-[#1db954]" size={18} />
+                  <p className="text-sm font-semibold leading-6 text-[#e5e5e5]">{item}</p>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 
-      <section className="bg-black px-5 py-16 sm:px-8">
+      <section className="bg-black px-5 py-16 sm:px-8" id="pricing">
         <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
           <div>
             <p className="text-sm font-bold uppercase tracking-[0.14em] text-[#1db954]">What you get</p>
             <h2 className="mt-3 max-w-3xl text-4xl font-black tracking-normal sm:text-5xl">
-              A cleaner way to find songs that fit your taste.
+              Better song discovery for $4.99 a month.
             </h2>
             <div className="mt-8 grid gap-4 sm:grid-cols-2">
               {[
-                "Playlist and single-song recommendation modes",
-                "Listener-overlap ranking instead of same-artist filler",
-                "Spotify search and playlist browsing",
-                "Private account login with paid access control",
+                "Search any Spotify track and find similar-feeling songs",
+                "Pick playlists or liked songs as recommendation sources",
+                "Ranked matches from listener-overlap signals",
+                "Spotify links so you can listen and save quickly",
               ].map((item) => (
                 <div className="flex items-start gap-3 rounded-lg bg-[#121212] p-4" key={item}>
                   <CheckCircle2 className="mt-0.5 shrink-0 text-[#1db954]" size={18} />
@@ -109,7 +146,7 @@ export function LandingPage() {
               <span className="pb-2 text-sm font-semibold text-[#a7a7a7]">/ month</span>
             </div>
             <p className="mt-4 text-sm leading-6 text-[#b3b3b3]">
-              Built for listeners who want better discovery from the music they already care about.
+              Unlimited access to SongTwin discovery while your subscription is active.
             </p>
             <Link className="connect-button mt-6 min-h-12 w-full" href="/app">
               Get access
@@ -119,6 +156,38 @@ export function LandingPage() {
               <ShieldCheck size={15} className="text-[#1db954]" />
               Billing runs through Stripe.
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="border-y border-[#242424] bg-[#0b0b0b] px-5 py-16 sm:px-8" id="contact">
+        <div className="mx-auto flex max-w-7xl flex-col gap-6 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-sm font-bold uppercase tracking-[0.14em] text-[#1db954]">Contact</p>
+            <h2 className="mt-3 max-w-2xl text-4xl font-black tracking-normal sm:text-5xl">
+              Questions, feedback, or a song discovery idea?
+            </h2>
+            <p className="mt-4 max-w-2xl text-lg leading-8 text-[#b3b3b3]">
+              Reach out if you want help with your account, billing, or the recommendation experience.
+            </p>
+          </div>
+          <a className="connect-button min-h-12 px-6" href="mailto:skyryze02@gmail.com">
+            <Mail size={18} aria-hidden="true" />
+            Contact SongTwin
+          </a>
+        </div>
+      </section>
+
+      <section className="bg-black px-5 py-20 sm:px-8" id="how-it-works">
+        <div className="mx-auto max-w-7xl">
+          <p className="text-sm font-bold uppercase tracking-[0.14em] text-[#1db954]">How it works</p>
+          <h2 className="mt-3 max-w-3xl text-4xl font-black tracking-normal sm:text-5xl">
+            SongTwin turns one music choice into a listener-shaped recommendation set.
+          </h2>
+          <div className="mt-10 grid gap-5 md:grid-cols-3">
+            <Feature icon={<Library size={20} />} title="Choose a source" text="Connect Spotify, then pick liked songs, a playlist, or a searched track." />
+            <Feature icon={<Radio size={20} />} title="Read the signal" text="SongTwin compares co-listening sources to find tracks that move with the same audience." />
+            <Feature icon={<Headphones size={20} />} title="Try the matches" text="Ranked results are mapped back to Spotify when a catalog match is available." />
           </div>
         </div>
       </section>
