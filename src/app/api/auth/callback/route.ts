@@ -12,7 +12,7 @@ export const runtime = "nodejs";
 export async function GET(request: NextRequest) {
   const error = request.nextUrl.searchParams.get("error");
   if (error) {
-    return NextResponse.redirect(new URL(`/?error=${encodeURIComponent(error)}`, request.url));
+    return NextResponse.redirect(new URL(`/app?error=${encodeURIComponent(error)}`, request.url));
   }
 
   const code = request.nextUrl.searchParams.get("code");
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
   const verifier = request.cookies.get(AUTH_VERIFIER_COOKIE)?.value;
 
   if (!code || !state || !storedState || !verifier || state !== storedState) {
-    const response = NextResponse.redirect(new URL("/?error=invalid-auth-state", request.url));
+    const response = NextResponse.redirect(new URL("/app?error=invalid-auth-state", request.url));
     clearAuthCookies(response);
     return response;
   }
@@ -32,12 +32,12 @@ export async function GET(request: NextRequest) {
       verifier,
       redirectUri: getRedirectUri(request),
     });
-    const response = NextResponse.redirect(new URL("/", request.url));
+    const response = NextResponse.redirect(new URL("/app", request.url));
     setSessionCookie(response, session);
     clearAuthCookies(response);
     return response;
   } catch {
-    const response = NextResponse.redirect(new URL("/?error=spotify-token-exchange", request.url));
+    const response = NextResponse.redirect(new URL("/app?error=spotify-token-exchange", request.url));
     clearAuthCookies(response);
     return response;
   }

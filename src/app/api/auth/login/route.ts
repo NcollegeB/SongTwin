@@ -13,7 +13,7 @@ export const runtime = "nodejs";
 export async function GET(request: NextRequest) {
   if (!spotifyConfigured()) {
     return NextResponse.redirect(
-      new URL("/?error=missing-spotify-client-id", request.nextUrl.origin),
+      new URL("/app?error=missing-spotify-client-id", request.nextUrl.origin),
     );
   }
 
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
   const requestOrigin = `${request.nextUrl.protocol}//${request.headers.get("host")}`;
 
   if (requestOrigin !== redirectOrigin) {
-    return NextResponse.redirect(new URL(request.nextUrl.pathname, redirectOrigin));
+    return NextResponse.redirect(new URL(`${request.nextUrl.pathname}?returnTo=/app`, redirectOrigin));
   }
 
   const state = generateState();

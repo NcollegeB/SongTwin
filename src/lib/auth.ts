@@ -44,7 +44,13 @@ export function attachRefreshedSession(response: NextResponse, fresh: FreshSessi
 
 export function routeErrorResponse(error: unknown) {
   const status =
-    error instanceof AuthError || error instanceof SpotifyApiError ? error.status : 500;
+    error instanceof AuthError || error instanceof SpotifyApiError
+      ? error.status
+      : error instanceof Error &&
+          "status" in error &&
+          typeof (error as Error & { status?: unknown }).status === "number"
+        ? (error as Error & { status: number }).status
+        : 500;
   if (error instanceof SpotifyApiError) {
     console.error("Spotify API error", {
       status: error.status,

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { attachRefreshedSession, requireSpotifySession, routeErrorResponse } from "@/lib/auth";
+import { requireActiveAccount } from "@/lib/account";
 import { recommendFromSeeds } from "@/lib/recommendations";
 import type { SimplifiedTrack } from "@/lib/types";
 
@@ -14,6 +15,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as RecommendBody;
     const seedTracks = Array.isArray(body.seedTracks) ? body.seedTracks : [];
+    await requireActiveAccount(request);
     const fresh = await requireSpotifySession(request);
     const payload = await recommendFromSeeds(fresh.session, seedTracks, {
       limit: body.limit ?? 24,

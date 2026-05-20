@@ -4,6 +4,10 @@ SongTwin is a consumer Spotify web app for finding songs similar to a playlist o
 
 ## Features
 
+- Public landing page with $4.99/month SongTwin Pro positioning.
+- Firebase Auth account login for paid users.
+- Firestore-backed subscription mirror for access control.
+- Stripe Checkout, Stripe Billing Portal, and signed webhook handling.
 - Spotify login with PKCE and encrypted HTTP-only session cookies.
 - Choose Liked Songs, a playlist you own/collaborate on, or search for a single song.
 - Generate ranked song matches from listener-overlap data.
@@ -54,6 +58,16 @@ SPOTIFY_REDIRECT_URI=http://127.0.0.1:3000/api/auth/callback
 SESSION_SECRET=your_long_random_secret
 LASTFM_API_KEY=your_lastfm_api_key_optional_but_recommended
 MUSICBRAINZ_USER_AGENT=SongTwin/0.1 (you@example.com)
+
+NEXT_PUBLIC_FIREBASE_API_KEY=your_firebase_web_api_key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
+NEXT_PUBLIC_FIREBASE_APP_ID=your_firebase_web_app_id
+FIREBASE_SERVICE_ACCOUNT_BASE64=base64_encoded_service_account_json
+
+STRIPE_SECRET_KEY=sk_test_or_live_key
+STRIPE_PRICE_ID=price_recurring_499_monthly
+STRIPE_WEBHOOK_SECRET=whsec_from_stripe_webhook
 ```
 
 5. Start the app:
@@ -80,6 +94,14 @@ SPOTIFY_CLIENT_ID=your_spotify_client_id
 SESSION_SECRET=your_long_random_secret
 LASTFM_API_KEY=your_lastfm_api_key
 MUSICBRAINZ_USER_AGENT=SongTwin/0.1 (you@example.com)
+NEXT_PUBLIC_FIREBASE_API_KEY=your_firebase_web_api_key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
+NEXT_PUBLIC_FIREBASE_APP_ID=your_firebase_web_app_id
+FIREBASE_SERVICE_ACCOUNT_BASE64=base64_encoded_service_account_json
+STRIPE_SECRET_KEY=sk_live_or_test_key
+STRIPE_PRICE_ID=price_recurring_499_monthly
+STRIPE_WEBHOOK_SECRET=whsec_from_stripe_webhook
 ```
 
 `SPOTIFY_REDIRECT_URI` is optional in production. If it is omitted, SongTwin uses the current site origin and sends Spotify to:
@@ -92,6 +114,29 @@ After Vercel gives you a production domain, add that exact callback URL to your 
 
 When this repo is connected to Vercel through the GitHub integration, pushes to `main` create a new production deployment automatically. Pull requests and non-production branches create preview deployments.
 
+### Stripe and Firebase
+
+1. In Firebase, create a web app, enable Email/Password authentication, and create/download a service account key for the Admin SDK.
+2. In Stripe, create a product named `SongTwin Pro` and a recurring monthly Price for `$4.99`.
+3. Add the Stripe webhook endpoint:
+
+```text
+https://your-vercel-domain.vercel.app/api/stripe/webhook
+```
+
+Listen for these events:
+
+```text
+checkout.session.completed
+customer.subscription.created
+customer.subscription.updated
+customer.subscription.deleted
+invoice.paid
+invoice.payment_failed
+```
+
+4. Add the Firebase and Stripe environment variables in Vercel, then redeploy.
+
 CLI flow:
 
 ```bash
@@ -101,6 +146,14 @@ vercel env add SPOTIFY_CLIENT_ID production
 vercel env add SESSION_SECRET production
 vercel env add LASTFM_API_KEY production
 vercel env add MUSICBRAINZ_USER_AGENT production
+vercel env add NEXT_PUBLIC_FIREBASE_API_KEY production
+vercel env add NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN production
+vercel env add NEXT_PUBLIC_FIREBASE_PROJECT_ID production
+vercel env add NEXT_PUBLIC_FIREBASE_APP_ID production
+vercel env add FIREBASE_SERVICE_ACCOUNT_BASE64 production
+vercel env add STRIPE_SECRET_KEY production
+vercel env add STRIPE_PRICE_ID production
+vercel env add STRIPE_WEBHOOK_SECRET production
 vercel deploy --prod
 ```
 
@@ -133,4 +186,6 @@ npm run build
 
 - Spotify tokens stay server-side.
 - Changing `SESSION_SECRET` invalidates existing sessions.
+- Stripe webhook signature verification uses the raw request body; do not parse JSON before verification.
+- Firebase custom claims are updated by the Stripe webhook, but Firestore remains the source of truth for subscription state in the app.
 - Without `LASTFM_API_KEY`, SongTwin tries ListenBrainz first. If neither collaborative source returns cross-artist matches, it shows an empty listener-graph state instead of same-artist catalog filler.

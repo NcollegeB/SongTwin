@@ -29,6 +29,10 @@ import type {
 } from "@/lib/types";
 
 type SourceMode = "playlist" | "song";
+type AppShellProps = {
+  accountControls?: ReactNode;
+  getAccountToken?: () => Promise<string | null>;
+};
 
 const initialSummary: RecommendationResponse["sourceSummary"] = {
   provider: "idle",
@@ -38,7 +42,7 @@ const initialSummary: RecommendationResponse["sourceSummary"] = {
   notes: [],
 };
 
-export function AppShell() {
+export function AppShell({ accountControls, getAccountToken }: AppShellProps = {}) {
   const [session, setSession] = useState<ApiSessionResponse | null>(null);
   const [sessionLoading, setSessionLoading] = useState(true);
   const [playlists, setPlaylists] = useState<PlaylistSummary[]>([]);
@@ -151,7 +155,14 @@ export function AppShell() {
   }, [connected, mode, searchTerm]);
 
   async function fetchJson<T>(url: string, init?: RequestInit) {
-    const response = await fetch(url, init);
+    const headers = new Headers(init?.headers);
+    const token = await getAccountToken?.();
+
+    if (token) {
+      headers.set("Authorization", `Bearer ${token}`);
+    }
+
+    const response = await fetch(url, { ...init, headers });
     const payload = await response.json().catch(() => ({}));
 
     if (!response.ok) {
@@ -352,13 +363,14 @@ export function AppShell() {
                     "connect-button",
                     session?.spotifyConfigured === false ? "pointer-events-none opacity-50" : "",
                   ].join(" ")}
-                  href="/api/auth/login"
+                  href="/api/auth/login?returnTo=/app"
                 >
                   <PlugZap size={16} aria-hidden="true" />
                   Connect Spotify
                 </a>
               )}
             </div>
+            {accountControls ? <div className="mt-4">{accountControls}</div> : null}
           </section>
 
           <section className="min-h-0 flex-1 rounded-lg bg-[#121212] p-4">

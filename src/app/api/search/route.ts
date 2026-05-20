@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { attachRefreshedSession, requireSpotifySession, routeErrorResponse } from "@/lib/auth";
+import { requireActiveAccount } from "@/lib/account";
 import { searchTracks } from "@/lib/spotify";
 
 export const runtime = "nodejs";
@@ -11,6 +12,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ tracks: [] });
     }
 
+    await requireActiveAccount(request);
     const fresh = await requireSpotifySession(request);
     const tracks = await searchTracks(fresh.session, query, 10);
     const response = NextResponse.json({ tracks });

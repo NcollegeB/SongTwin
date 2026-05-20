@@ -70,3 +70,31 @@ export type ApiSessionResponse = {
   expiresAt?: number;
   setupSteps: string[];
 };
+
+export type SubscriptionStatus =
+  | "active"
+  | "trialing"
+  | "past_due"
+  | "canceled"
+  | "incomplete"
+  | "incomplete_expired"
+  | "unpaid"
+  | "paused"
+  | "inactive";
+
+export type AccountSubscription = {
+  active: boolean;
+  status: SubscriptionStatus;
+  currentPeriodEnd?: string;
+  cancelAtPeriodEnd?: boolean;
+  stripeCustomerId?: string;
+  stripeSubscriptionId?: string;
+};
+
+export type AccountResponse = {
+  configured: boolean;
+  stripeConfigured: boolean;
+  uid?: string;
+  email?: string;
+  subscription: AccountSubscription;
+};
