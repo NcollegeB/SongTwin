@@ -75,6 +75,7 @@ export function AppShell() {
       : selectedTrack?.artistName ?? "Spotify search";
   const sourceArtwork =
     mode === "playlist" ? selectedPlaylist?.imageUrl ?? visibleTracks[0]?.imageUrl : selectedTrack?.imageUrl;
+  const sourceKindLabel = !connected ? "Spotify source" : mode === "playlist" ? "Source playlist" : "Source song";
   const graphReady =
     recommendations.length > 0 &&
     (sourceSummary.provider === "lastfm" || sourceSummary.provider === "listenbrainz");
@@ -369,7 +370,9 @@ export function AppShell() {
               <span className="text-xs text-[#737373]">{connected ? "Spotify" : "Connect"}</span>
             </div>
 
-            {mode === "playlist" ? (
+            {!connected ? (
+              <ConnectLibraryPrompt />
+            ) : mode === "playlist" ? (
               <div className="flex min-h-0 flex-col gap-3">
                 <label className="sr-only" htmlFor="playlist">
                   Playlist
@@ -489,7 +492,7 @@ export function AppShell() {
               <Cover src={sourceArtwork} label={sourceName} size="hero" />
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#d8e8de]">
-                  {mode === "playlist" ? "Source playlist" : "Source song"}
+                  {sourceKindLabel}
                 </p>
                 <h2 className="mt-2 break-words text-4xl font-black tracking-normal sm:text-5xl lg:text-6xl">
                   {sourceName}
@@ -498,7 +501,7 @@ export function AppShell() {
                 <div className="mt-5 flex flex-wrap items-center gap-3">
                   <button
                     className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-[#1db954] px-6 text-sm font-bold text-black shadow-lg shadow-black/25 transition hover:scale-[1.02] hover:bg-[#1ed760] disabled:cursor-not-allowed disabled:opacity-60"
-                    disabled={running || sessionLoading}
+                    disabled={!connected || running || sessionLoading}
                     onClick={runRecommendations}
                     type="button"
                   >
@@ -637,6 +640,20 @@ function PlaylistPreview({
           <p className="rounded-lg bg-[#181818] p-3 text-sm text-[#a7a7a7]">No readable songs found.</p>
         )}
       </div>
+    </div>
+  );
+}
+
+function ConnectLibraryPrompt() {
+  return (
+    <div className="rounded-lg bg-[#181818] p-4">
+      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#242424] text-[#1db954]">
+        <PlugZap size={20} aria-hidden="true" />
+      </div>
+      <h2 className="mt-4 text-base font-bold">Connect your Spotify library</h2>
+      <p className="mt-2 text-sm leading-6 text-[#a7a7a7]">
+        SongTwin uses your playlists, liked songs, and search selections as seeds for listener-overlap matching.
+      </p>
     </div>
   );
 }
