@@ -216,8 +216,14 @@ export function AppShell() {
   }
 
   async function logout() {
-    await fetch("/api/auth/logout", { method: "POST" });
-    await loadSession();
+    setError(null);
+
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+      await loadSession();
+    } catch {
+      setError("Disconnect failed because the local dev server could not be reached. Refresh the page and try again.");
+    }
   }
 
   return (
