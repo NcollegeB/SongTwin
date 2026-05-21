@@ -322,11 +322,16 @@ export function AccountControls({
     <div className="rounded-lg border border-[#242424] bg-[#181818] p-3">
       <div className="flex items-center gap-2 text-xs font-bold text-[#1db954]">
         <CheckCircle2 size={15} aria-hidden="true" />
-        SongTwin Pro
+        {account.admin ? "SongTwin Admin" : "SongTwin Pro"}
       </div>
-      <p className="mt-1 truncate text-xs text-[#a7a7a7]">{email ?? "Paid account"}</p>
+      <p className="mt-1 truncate text-xs text-[#a7a7a7]">{email ?? (account.admin ? "Admin account" : "Paid account")}</p>
       <div className="mt-3 grid grid-cols-2 gap-2">
-        <button className="connect-button secondary !min-h-9 !px-3 !text-xs" onClick={onPortal} type="button">
+        <button
+          className="connect-button secondary !min-h-9 !px-3 !text-xs"
+          disabled={account.admin}
+          onClick={onPortal}
+          type="button"
+        >
           <CreditCard size={14} aria-hidden="true" />
           Billing
         </button>
@@ -337,6 +342,9 @@ export function AccountControls({
       </div>
       {account.subscription.cancelAtPeriodEnd ? (
         <p className="mt-3 text-xs leading-5 text-[#f5b84b]">Access remains active until the billing period ends.</p>
+      ) : null}
+      {account.admin ? (
+        <p className="mt-3 text-xs leading-5 text-[#a7a7a7]">Permanent debug access from the admin allowlist.</p>
       ) : null}
     </div>
   );

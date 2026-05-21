@@ -7,6 +7,19 @@ import type { NextRequest } from "next/server";
 
 const ACTIVE_STATUSES = new Set<SubscriptionStatus>(["active", "trialing"]);
 
+function configuredAdminEmails() {
+  return new Set(
+    (process.env.SONGTWIN_ADMIN_EMAILS ?? "")
+      .split(",")
+      .map((email) => email.trim().toLowerCase())
+      .filter(Boolean),
+  );
+}
+
+function accountIsAdmin(email?: string | null) {
+  return Boolean(email && configuredAdminEmails().has(email.toLowerCase()));
+}
+
 export class AccountAccessError extends Error {
   status: number;
 
@@ -116,14 +129,18 @@ export async function getAccountResponse(request: NextRequest): Promise<AccountR
 
   const decoded = await verifyAccountToken(request);
   const account = await ensureAccount(decoded.uid, decoded.email);
+  const admin = accountIsAdmin(decoded.email ?? account.email);
+  const subscriptionStatus = admin ? "active" : account.subscriptionStatus;
+
   return {
     configured: true,
     stripeConfigured: stripeConfigured(),
+    admin,
     uid: account.uid,
     email: account.email,
     subscription: {
-      active: subscriptionIsActive(account.subscriptionStatus),
-      status: account.subscriptionStatus,
+      active: subscriptionIsActive(subscriptionStatus),
+      status: subscriptionStatus,
       currentPeriodEnd: account.currentPeriodEnd,
       cancelAtPeriodEnd: account.cancelAtPeriodEnd,
       stripeCustomerId: account.stripeCustomerId,
@@ -136,7 +153,7 @@ export async function requireActiveAccount(request: NextRequest) {
   const decoded = await verifyAccountToken(request);
   const account = await ensureAccount(decoded.uid, decoded.email);
 
-  if (!subscriptionIsActive(account.subscriptionStatus)) {
+  if (!accountIsAdmin(decoded.email ?? account.email) && !subscriptionIsActive(account.subscriptionStatus)) {
     throw new AccountAccessError("An active SongTwin subscription is required", 402);
   }
 

@@ -68,6 +68,7 @@ FIREBASE_SERVICE_ACCOUNT_BASE64=base64_encoded_service_account_json
 STRIPE_SECRET_KEY=sk_test_or_live_key
 STRIPE_PRICE_ID=price_recurring_499_monthly
 STRIPE_WEBHOOK_SECRET=whsec_from_stripe_webhook
+SONGTWIN_ADMIN_EMAILS=skyryze02@gmail.com
 ```
 
 5. Start the app:
@@ -85,7 +86,7 @@ npm run dev
 
 SongTwin is a standard Next.js app and can deploy to Vercel from the GitHub repo or the Vercel CLI.
 
-[Deploy from GitHub on Vercel](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FNcollegeB%2FSongTwin&project-name=song-twin&repository-name=SongTwin&env=SPOTIFY_CLIENT_ID,SPOTIFY_REDIRECT_URI,SESSION_SECRET,LASTFM_API_KEY,MUSICBRAINZ_USER_AGENT,NEXT_PUBLIC_FIREBASE_API_KEY,NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,NEXT_PUBLIC_FIREBASE_PROJECT_ID,NEXT_PUBLIC_FIREBASE_APP_ID,FIREBASE_SERVICE_ACCOUNT_BASE64,STRIPE_SECRET_KEY,STRIPE_PRICE_ID,STRIPE_WEBHOOK_SECRET)
+[Deploy from GitHub on Vercel](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FNcollegeB%2FSongTwin&project-name=song-twin&repository-name=SongTwin&env=SPOTIFY_CLIENT_ID,SPOTIFY_REDIRECT_URI,SESSION_SECRET,LASTFM_API_KEY,MUSICBRAINZ_USER_AGENT,NEXT_PUBLIC_FIREBASE_API_KEY,NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,NEXT_PUBLIC_FIREBASE_PROJECT_ID,NEXT_PUBLIC_FIREBASE_APP_ID,FIREBASE_SERVICE_ACCOUNT_BASE64,STRIPE_SECRET_KEY,STRIPE_PRICE_ID,STRIPE_WEBHOOK_SECRET,SONGTWIN_ADMIN_EMAILS)
 
 Required production environment variables:
 
@@ -102,9 +103,11 @@ FIREBASE_SERVICE_ACCOUNT_BASE64=base64_encoded_service_account_json
 STRIPE_SECRET_KEY=sk_live_or_test_key
 STRIPE_PRICE_ID=price_recurring_499_monthly
 STRIPE_WEBHOOK_SECRET=whsec_from_stripe_webhook
+SONGTWIN_ADMIN_EMAILS=skyryze02@gmail.com
 ```
 
 SongTwin uses Stripe-hosted Checkout. A Stripe publishable key is not required for this redirect flow because the server creates the Checkout Session and returns Stripe's hosted checkout URL.
+`SONGTWIN_ADMIN_EMAILS` is an optional comma-separated allowlist for permanent debug access without a Stripe subscription.
 
 `SPOTIFY_REDIRECT_URI` is optional in production. If it is omitted, SongTwin uses the current site origin and sends Spotify to:
 
@@ -159,6 +162,7 @@ vercel env add FIREBASE_SERVICE_ACCOUNT_BASE64 production
 vercel env add STRIPE_SECRET_KEY production
 vercel env add STRIPE_PRICE_ID production
 vercel env add STRIPE_WEBHOOK_SECRET production
+vercel env add SONGTWIN_ADMIN_EMAILS production
 vercel deploy --prod
 ```
 

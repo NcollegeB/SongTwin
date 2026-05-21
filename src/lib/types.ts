@@ -94,6 +94,7 @@ export type AccountSubscription = {
 export type AccountResponse = {
   configured: boolean;
   stripeConfigured: boolean;
+  admin?: boolean;
   uid?: string;
   email?: string;
   subscription: AccountSubscription;
