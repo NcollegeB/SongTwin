@@ -15,6 +15,7 @@ import {
   PlugZap,
   Plus,
   Search,
+  Shuffle,
   Sparkles,
   Waves,
   X,
@@ -56,7 +57,7 @@ function songSeedKey(track: SimplifiedTrack) {
   return track.id ?? `${track.name.trim().toLowerCase()}::${track.artistName.trim().toLowerCase()}`;
 }
 
-function pickPlaylistSeedTracks(tracks: SimplifiedTrack[], limit: number) {
+function dedupeSourceTracks(tracks: SimplifiedTrack[]) {
   const uniqueTracks: SimplifiedTrack[] = [];
   const seen = new Set<string>();
 
@@ -70,15 +71,23 @@ function pickPlaylistSeedTracks(tracks: SimplifiedTrack[], limit: number) {
     uniqueTracks.push(track);
   }
 
-  if (uniqueTracks.length <= limit) {
-    return uniqueTracks;
+  return uniqueTracks;
+}
+
+function pickRandomPlaylistSeedTracks(tracks: SimplifiedTrack[], limit: number) {
+  const candidates = dedupeSourceTracks(tracks);
+
+  if (candidates.length <= limit) {
+    return candidates;
   }
 
-  const lastIndex = uniqueTracks.length - 1;
-  return Array.from({ length: limit }, (_, index) => {
-    const spreadIndex = Math.round((index * lastIndex) / (limit - 1));
-    return uniqueTracks[spreadIndex];
-  }).filter((track): track is SimplifiedTrack => Boolean(track));
+  const shuffled = [...candidates];
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const randomIndex = Math.floor(Math.random() * (index + 1));
+    [shuffled[index], shuffled[randomIndex]] = [shuffled[randomIndex], shuffled[index]];
+  }
+
+  return shuffled.slice(0, limit);
 }
 
 export function AppShell({ accountControls, accountSettings, getAccountToken }: AppShellProps = {}) {
@@ -87,6 +96,7 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
   const [playlists, setPlaylists] = useState<PlaylistSummary[]>([]);
   const [selectedPlaylistId, setSelectedPlaylistId] = useState("");
   const [tracks, setTracks] = useState<SimplifiedTrack[]>([]);
+  const [playlistSeedTracks, setPlaylistSeedTracks] = useState<SimplifiedTrack[]>([]);
   const [sourceTracks, setSourceTracks] = useState<SimplifiedTrack[]>([]);
   const [mode, setMode] = useState<SourceMode>("playlist");
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
@@ -102,11 +112,8 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
   const connected = Boolean(session?.connected);
   const selectedPlaylist = playlists.find((playlist) => playlist.id === selectedPlaylistId);
   const sourceSeedTracks = useMemo(
-    () =>
-      mode === "playlist"
-        ? pickPlaylistSeedTracks(tracks, PLAYLIST_RECOMMENDATION_SEED_LIMIT)
-        : sourceTracks,
-    [mode, sourceTracks, tracks],
+    () => (mode === "playlist" ? playlistSeedTracks : sourceTracks),
+    [mode, playlistSeedTracks, sourceTracks],
   );
   const sourceSeedCount = sourceSeedTracks.length;
   const displayedSeedCount =
@@ -138,7 +145,7 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
   const sourceKindLabel = !connected ? "Spotify source" : mode === "playlist" ? "Source playlist" : "Source songs";
   const sourceDetail = connected
     ? mode === "playlist"
-      ? `${sourceSeedCount} seed songs will be pulled from this playlist. Results return up to ${RECOMMENDATION_RESULT_LIMIT} songs.`
+      ? `${sourceSeedCount} random source song${sourceSeedCount === 1 ? "" : "s"} selected from this playlist. Results return up to ${RECOMMENDATION_RESULT_LIMIT} songs.`
       : `${sourceSeedCount} source song${sourceSeedCount === 1 ? "" : "s"} selected. Results return up to ${RECOMMENDATION_RESULT_LIMIT} songs.`
     : "";
   const graphReady =
@@ -239,6 +246,7 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
       if (!data.connected) {
         setPlaylists([]);
         setTracks([]);
+        setPlaylistSeedTracks([]);
         setSelectedPlaylistId("");
         setSourceTracks([]);
         setRecommendations([]);
@@ -291,8 +299,12 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
           ? "/api/library/tracks"
           : `/api/playlists/${encodeURIComponent(playlistId)}/tracks`;
       const payload = await fetchJson<{ tracks: SimplifiedTrack[] }>(endpoint);
-      setTracks(payload.tracks);
-      return payload.tracks.length > 0;
+      const nextTracks = payload.tracks;
+      setTracks(nextTracks);
+      setPlaylistSeedTracks(
+        pickRandomPlaylistSeedTracks(nextTracks, PLAYLIST_RECOMMENDATION_SEED_LIMIT),
+      );
+      return nextTracks.length > 0;
     } catch (caught) {
       if (!quiet) {
         setError(caught instanceof Error ? caught.message : "Unable to load that playlist.");
@@ -386,6 +398,17 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
 
   function clearSourceTracks() {
     setSourceTracks([]);
+    resetRecommendationState();
+  }
+
+  function randomizePlaylistSeeds() {
+    if (tracks.length === 0) {
+      return;
+    }
+
+    setPlaylistSeedTracks(
+      pickRandomPlaylistSeedTracks(tracks, PLAYLIST_RECOMMENDATION_SEED_LIMIT),
+    );
     resetRecommendationState();
   }
 
@@ -498,9 +521,11 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
 
                 <PlaylistPreview
                   loading={loadingTracks}
+                  onRandomize={randomizePlaylistSeeds}
                   playlist={selectedPlaylist}
                   seedCount={sourceSeedCount}
                   seedLimit={PLAYLIST_RECOMMENDATION_SEED_LIMIT}
+                  seedTracks={playlistSeedTracks}
                   tracks={tracks}
                 />
               </div>
@@ -723,22 +748,27 @@ function MiniStat({
 
 function PlaylistPreview({
   loading,
+  onRandomize,
   playlist,
   seedCount,
   seedLimit,
+  seedTracks,
   tracks,
 }: {
   loading: boolean;
+  onRandomize: () => void;
   playlist?: PlaylistSummary;
   seedCount: number;
   seedLimit: number;
+  seedTracks: SimplifiedTrack[];
   tracks: SimplifiedTrack[];
 }) {
+  const seedTrackKeys = useMemo(() => new Set(seedTracks.map(songSeedKey)), [seedTracks]);
   const totalTracks = playlist?.totalTracks ?? tracks.length;
   const loadedTrackLabel =
     totalTracks > tracks.length
-      ? `Showing ${tracks.length} loaded songs from ${totalTracks}`
-      : `Showing ${tracks.length} songs`;
+      ? `Loaded ${tracks.length.toLocaleString()} of ${totalTracks.toLocaleString()} songs from Spotify`
+      : `Loaded ${tracks.length.toLocaleString()} songs from Spotify`;
 
   return (
     <div className="min-h-0">
@@ -752,33 +782,101 @@ function PlaylistPreview({
         </div>
       </div>
       <p className="mt-2 rounded-lg bg-[#0f2418] px-3 py-2 text-xs font-semibold text-[#b7f7cb]">
-        Pulls {seedCount} seed song{seedCount === 1 ? "" : "s"} for this run, up to {seedLimit} max.
+        Randomly selects {seedCount} source song{seedCount === 1 ? "" : "s"} for this run, up to {seedLimit} max.
       </p>
-      <p className="mt-2 text-xs font-medium text-[#a7a7a7]">{loadedTrackLabel}</p>
+      <p className="mt-2 text-xs font-medium text-[#a7a7a7]">
+        {loadedTrackLabel}. Randomize picks from this loaded list.
+      </p>
 
-      <div className="mt-3 max-h-[52vh] overflow-y-auto pr-1">
-        {loading ? (
-          <div className="flex items-center gap-2 rounded-lg bg-[#181818] p-3 text-sm text-[#a7a7a7]">
-            <Loader2 className="animate-spin" size={16} />
-            Loading songs
+      <section className="mt-3 flex max-h-[220px] min-h-[150px] flex-col rounded-lg border border-[#242424] bg-[#181818] p-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-bold">Source Songs</h2>
+            <p className="mt-0.5 text-xs text-[#a7a7a7]">
+              {seedTracks.length} / {seedLimit} random seeds selected
+            </p>
           </div>
-        ) : tracks.length > 0 ? (
-          tracks.map((track, index) => (
-            <div
-              className="grid grid-cols-[24px_38px_minmax(0,1fr)] items-center gap-2 rounded-lg px-2 py-2 text-sm transition hover:bg-[#242424]"
-              key={`${track.id}-${track.name}`}
-            >
-              <span className="text-right text-xs text-[#737373]">{index + 1}</span>
-              <Cover src={track.imageUrl} label={track.name} size="xs" />
-              <div className="min-w-0">
-                <p className="truncate font-medium text-[#f1f1f1]">{track.name}</p>
-                <p className="truncate text-xs text-[#a7a7a7]">{track.artistName}</p>
+          <button
+            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-full bg-[#1db954] px-3 text-xs font-black text-black transition hover:bg-[#1ed760] disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={loading || tracks.length === 0}
+            onClick={onRandomize}
+            type="button"
+          >
+            <Shuffle size={14} aria-hidden="true" />
+            Randomize
+          </button>
+        </div>
+
+        <div className="mt-3 min-h-0 flex-1 overflow-y-auto pr-1">
+          <div className="grid gap-2">
+            {loading ? (
+              <div className="flex items-center gap-2 rounded-lg bg-[#121212] p-3 text-sm text-[#a7a7a7]">
+                <Loader2 className="animate-spin" size={16} />
+                Selecting source songs
               </div>
+            ) : seedTracks.length > 0 ? (
+              seedTracks.map((track, index) => (
+                <article
+                  className="grid grid-cols-[26px_34px_minmax(0,1fr)_20px] items-center gap-2 rounded-lg bg-[#121212] p-2 text-sm"
+                  key={`seed-${songSeedKey(track)}`}
+                >
+                  <span className="text-right text-xs text-[#737373]">{index + 1}</span>
+                  <Cover src={track.imageUrl} label={track.name} size="xs" />
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-white">{track.name}</p>
+                    <p className="truncate text-xs text-[#a7a7a7]">{track.artistName}</p>
+                  </div>
+                  <CheckCircle2 className="text-[#1db954]" size={16} aria-hidden="true" />
+                </article>
+              ))
+            ) : (
+              <p className="rounded-lg bg-[#121212] p-3 text-sm text-[#a7a7a7]">
+                No source songs selected yet.
+              </p>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <div className="mt-3">
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <h2 className="text-sm font-bold">Playlist Songs</h2>
+          <span className="text-xs font-medium text-[#a7a7a7]">Selected songs show a check</span>
+        </div>
+        <div className="max-h-[34vh] overflow-y-auto pr-1">
+          {loading ? (
+            <div className="flex items-center gap-2 rounded-lg bg-[#181818] p-3 text-sm text-[#a7a7a7]">
+              <Loader2 className="animate-spin" size={16} />
+              Loading songs
             </div>
-          ))
-        ) : (
-          <p className="rounded-lg bg-[#181818] p-3 text-sm text-[#a7a7a7]">No readable songs found.</p>
-        )}
+          ) : tracks.length > 0 ? (
+            tracks.map((track, index) => {
+              const selected = seedTrackKeys.has(songSeedKey(track));
+
+              return (
+                <div
+                  className={[
+                    "grid grid-cols-[24px_38px_minmax(0,1fr)_22px] items-center gap-2 rounded-lg px-2 py-2 text-sm transition",
+                    selected ? "bg-[#0f2b1a]" : "hover:bg-[#242424]",
+                  ].join(" ")}
+                  key={`${track.id}-${track.name}`}
+                >
+                  <span className="text-right text-xs text-[#737373]">{index + 1}</span>
+                  <Cover src={track.imageUrl} label={track.name} size="xs" />
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-[#f1f1f1]">{track.name}</p>
+                    <p className="truncate text-xs text-[#a7a7a7]">{track.artistName}</p>
+                  </div>
+                  <span className="flex h-6 w-6 items-center justify-center">
+                    {selected ? <CheckCircle2 className="text-[#1db954]" size={16} aria-hidden="true" /> : null}
+                  </span>
+                </div>
+              );
+            })
+          ) : (
+            <p className="rounded-lg bg-[#181818] p-3 text-sm text-[#a7a7a7]">No readable songs found.</p>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -1220,7 +1318,7 @@ function GraphHealth({
   const label = !connected
     ? "Sign in"
     : graphReady
-      ? "Co-listening"
+      ? "Listener match"
       : needsLastFm
         ? "Add Last.fm key"
         : "Ready";
@@ -1278,7 +1376,7 @@ function emptyRecommendationMessage(
   }
 
   if (!summary.lastFmConfigured) {
-    return "ListenBrainz did not return cross-artist listener matches for this source. SongTwin is hiding same-artist Spotify catalog filler; add LASTFM_API_KEY for the stronger co-listening graph.";
+    return "ListenBrainz did not return cross-artist listener matches for this source. SongTwin is hiding same-artist Spotify catalog filler; add LASTFM_API_KEY for the stronger listener graph.";
   }
 
   return "No cross-artist listener matches came back for this source. Try a broader playlist or a different source song.";
