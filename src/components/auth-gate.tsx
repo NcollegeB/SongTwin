@@ -499,15 +499,37 @@ function AuthFrame({
   subtitle?: string;
 }) {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-black px-5 py-8 text-white">
-      <section className="w-full max-w-md rounded-lg border border-[#242424] bg-[#121212] p-6">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#242424] text-[#1db954]">
-          {icon}
+    <main className="min-h-screen bg-black px-5 py-5 text-white sm:px-8">
+      <div className="mx-auto flex min-h-[calc(100vh-2.5rem)] w-full max-w-7xl flex-col">
+        <header className="grid gap-4 md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-center">
+          <Link className="flex items-center gap-3" href="/">
+            <span className="flex h-10 w-10 items-center justify-center rounded bg-[#1db954] text-black">
+              <Music2 size={22} aria-hidden="true" />
+            </span>
+            <span className="text-xl font-black tracking-normal">SongTwin</span>
+          </Link>
+          <nav className="flex flex-wrap items-center gap-4 text-sm font-bold text-[#d8d8d8] md:justify-center">
+            <Link className="hover:text-white" href="/#home">Home</Link>
+            <Link className="hover:text-white" href="/#about">About</Link>
+            <Link className="hover:text-white" href="/#pricing">Pricing</Link>
+            <Link className="hover:text-white" href="/#contact">Contact</Link>
+          </nav>
+          <Link className="connect-button secondary min-h-10 px-4 text-sm md:justify-self-end" href="/">
+            Back home
+          </Link>
+        </header>
+
+        <div className="flex flex-1 items-center justify-center py-10">
+          <section className="w-full max-w-md rounded-lg border border-[#242424] bg-[#121212] p-6">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#242424] text-[#1db954]">
+              {icon}
+            </div>
+            <h1 className="mt-5 text-3xl font-black tracking-normal">{title}</h1>
+            {subtitle ? <p className="mt-3 text-sm leading-6 text-[#a7a7a7]">{subtitle}</p> : null}
+            {children}
+          </section>
         </div>
-        <h1 className="mt-5 text-3xl font-black tracking-normal">{title}</h1>
-        {subtitle ? <p className="mt-3 text-sm leading-6 text-[#a7a7a7]">{subtitle}</p> : null}
-        {children}
-      </section>
+      </div>
     </main>
   );
 }
