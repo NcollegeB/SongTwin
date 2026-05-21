@@ -888,32 +888,32 @@ function SourceSongsPanel({
 
       <div className="mt-3 min-h-0 flex-1 overflow-y-auto pr-1">
         <div className="grid gap-2">
-        {tracks.length === 0 ? (
-          <p className="rounded-lg bg-[#121212] p-3 text-sm text-[#a7a7a7]">
-            Add songs from the search results. Find songs uses this source list.
-          </p>
-        ) : (
-          tracks.map((track) => (
-            <article
-              className="grid grid-cols-[38px_minmax(0,1fr)_auto] items-center gap-2 rounded-lg bg-[#121212] p-2 text-sm"
-              key={songSeedKey(track)}
-            >
-              <Cover src={track.imageUrl} label={track.name} size="xs" />
-              <div className="min-w-0">
-                <p className="truncate font-semibold text-white">{track.name}</p>
-                <p className="truncate text-xs text-[#a7a7a7]">{track.artistName}</p>
-              </div>
-              <button
-                className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#242424] text-[#d8d8d8] transition hover:bg-[#333] hover:text-white"
-                onClick={() => onRemove(track)}
-                type="button"
+          {tracks.length === 0 ? (
+            <p className="rounded-lg bg-[#121212] p-3 text-sm text-[#a7a7a7]">
+              Add songs from the search results. Find songs uses this source list.
+            </p>
+          ) : (
+            tracks.map((track) => (
+              <article
+                className="grid grid-cols-[38px_minmax(0,1fr)_auto] items-center gap-2 rounded-lg bg-[#121212] p-2 text-sm"
+                key={songSeedKey(track)}
               >
-                <X size={15} aria-hidden="true" />
-                <span className="sr-only">Remove source song</span>
-              </button>
-            </article>
-          ))
-        )}
+                <Cover src={track.imageUrl} label={track.name} size="xs" />
+                <div className="min-w-0">
+                  <p className="truncate font-semibold text-white">{track.name}</p>
+                  <p className="truncate text-xs text-[#a7a7a7]">{track.artistName}</p>
+                </div>
+                <button
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#242424] text-[#d8d8d8] transition hover:bg-[#333] hover:text-white"
+                  onClick={() => onRemove(track)}
+                  type="button"
+                >
+                  <X size={15} aria-hidden="true" />
+                  <span className="sr-only">Remove source song</span>
+                </button>
+              </article>
+            ))
+          )}
         </div>
       </div>
     </section>
@@ -932,37 +932,39 @@ function SearchResultRow({
   return (
     <article
       className={[
-        "grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 rounded-lg p-2 text-sm transition",
+        "rounded-lg p-2.5 text-sm transition",
         added ? "bg-[#1db954] text-black" : "bg-[#181818] text-white hover:bg-[#242424]",
       ].join(" ")}
     >
       <button
-        className="grid min-w-0 grid-cols-[42px_minmax(0,1fr)] items-center gap-3 text-left"
+        className="grid w-full min-w-0 grid-cols-[48px_minmax(0,1fr)] items-center gap-3 text-left"
         onClick={() => onAdd(track)}
         type="button"
       >
         <Cover src={track.imageUrl} label={track.name} size="sm" />
         <span className="min-w-0">
-          <span className="block truncate font-semibold">{track.name}</span>
+          <span className="block break-words text-sm font-bold leading-snug">{track.name}</span>
           <span className={["block truncate text-xs", added ? "text-black/75" : "text-[#a7a7a7]"].join(" ")}>
             {track.artistName}
           </span>
         </span>
       </button>
-      <button
-        className={[
-          "inline-flex h-8 items-center justify-center gap-1.5 rounded-full px-3 text-xs font-black transition",
-          added
-            ? "bg-black/15 text-black hover:bg-black/25"
-            : "bg-[#1db954] text-black hover:bg-[#1ed760]",
-        ].join(" ")}
-        onClick={() => onAdd(track)}
-        type="button"
-      >
-        {added ? <CheckCircle2 size={14} aria-hidden="true" /> : <Plus size={14} aria-hidden="true" />}
-        {added ? "Added" : "Add"}
-      </button>
-      <OpenTrackActions selected={added} track={track} />
+      <div className="mt-2 flex items-center gap-2 pl-[60px]">
+        <button
+          className={[
+            "inline-flex h-8 items-center justify-center gap-1.5 rounded-full px-3 text-xs font-black transition",
+            added
+              ? "bg-black/15 text-black hover:bg-black/25"
+              : "bg-[#1db954] text-black hover:bg-[#1ed760]",
+          ].join(" ")}
+          onClick={() => onAdd(track)}
+          type="button"
+        >
+          {added ? <CheckCircle2 size={14} aria-hidden="true" /> : <Plus size={14} aria-hidden="true" />}
+          {added ? "Added" : "Add"}
+        </button>
+        <OpenTrackActions selected={added} track={track} />
+      </div>
     </article>
   );
 }
