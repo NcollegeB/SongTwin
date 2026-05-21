@@ -5,7 +5,6 @@
 import {
   CheckCircle2,
   CircleAlert,
-  ExternalLink,
   Headphones,
   Heart,
   ListMusic,
@@ -19,7 +18,7 @@ import {
   Waves,
 } from "lucide-react";
 import type { FormEvent, ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
   ApiSessionResponse,
   PlaylistSummary,
@@ -90,6 +89,24 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
     !sourceSummary.lastFmConfigured &&
     sourceSummary.provider !== "idle";
 
+  const fetchJson = useCallback(async function fetchJson<T>(url: string, init?: RequestInit) {
+    const headers = new Headers(init?.headers);
+    const token = await getAccountToken?.();
+
+    if (token) {
+      headers.set("Authorization", `Bearer ${token}`);
+    }
+
+    const response = await fetch(url, { ...init, headers });
+    const payload = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error(payload.error || `Request failed: ${response.status}`);
+    }
+
+    return payload as T;
+  }, [getAccountToken]);
+
   useEffect(() => {
     const oauthError = new URLSearchParams(window.location.search).get("error");
     if (oauthError) {
@@ -118,19 +135,15 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
       setSearching(true);
 
       try {
-        const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`, {
-          signal: controller.signal,
-        });
-        const payload = (await response.json().catch(() => ({}))) as {
-          tracks?: SimplifiedTrack[];
-          error?: string;
-        };
-
-        if (!response.ok) {
-          throw new Error(payload.error || `Search failed: ${response.status}`);
-        }
+        const payload = await fetchJson<{ tracks?: SimplifiedTrack[]; error?: string }>(
+          `/api/search?q=${encodeURIComponent(query)}`,
+          {
+            signal: controller.signal,
+          },
+        );
 
         const tracks = payload.tracks ?? [];
+        setError(null);
         setSearchResults(tracks);
         if (tracks.length > 0) {
           setSelectedTrack((currentTrack) => {
@@ -153,25 +166,7 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
       controller.abort();
       window.clearTimeout(timeout);
     };
-  }, [connected, mode, searchTerm]);
-
-  async function fetchJson<T>(url: string, init?: RequestInit) {
-    const headers = new Headers(init?.headers);
-    const token = await getAccountToken?.();
-
-    if (token) {
-      headers.set("Authorization", `Bearer ${token}`);
-    }
-
-    const response = await fetch(url, { ...init, headers });
-    const payload = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-      throw new Error(payload.error || `Request failed: ${response.status}`);
-    }
-
-    return payload as T;
-  }
+  }, [connected, fetchJson, mode, searchTerm]);
 
   async function loadSession() {
     setSessionLoading(true);
@@ -523,6 +518,9 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
                     {running ? <Loader2 className="animate-spin" size={18} /> : <Play size={18} />}
                     Find songs
                   </button>
+                  {mode === "song" && selectedTrack ? (
+                    <OpenTrackActions labeled track={selectedTrack} />
+                  ) : null}
                   <div className="grid grid-cols-3 gap-2">
                     <MiniStat icon={<Headphones size={15} />} label="Seeds" value={sourceSummary.seedsAnalyzed} />
                     <MiniStat icon={<Heart size={15} />} label="Songs" value={recommendations.length} />
@@ -552,7 +550,7 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
                 <LoadingPanel />
               ) : recommendations.length > 0 ? (
                 <div className="overflow-hidden rounded-lg border border-[#242424]">
-                  <div className="grid grid-cols-[44px_minmax(0,1.6fr)_minmax(0,1fr)_92px] gap-3 border-b border-[#242424] bg-black/20 px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-[#a7a7a7] max-md:hidden">
+                  <div className="grid grid-cols-[44px_minmax(0,1.6fr)_minmax(0,1fr)_132px] gap-3 border-b border-[#242424] bg-black/20 px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-[#a7a7a7] max-md:hidden">
                     <span>#</span>
                     <span>Title</span>
                     <span>Signal</span>
@@ -707,30 +705,35 @@ function SearchResults({
       ) : null}
 
       {tracks.slice(0, 7).map((track) => (
-        <button
+        <article
           className={[
-            "grid grid-cols-[42px_minmax(0,1fr)] items-center gap-3 rounded-lg p-2 text-left text-sm transition",
+            "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg p-2 text-sm transition",
             selectedTrack?.id === track.id
               ? "bg-[#1db954] text-black"
               : "bg-[#181818] text-white hover:bg-[#242424]",
           ].join(" ")}
           key={`${track.id}-${track.name}`}
-          onClick={() => onSelect(track)}
-          type="button"
         >
-          <Cover src={track.imageUrl} label={track.name} size="sm" />
-          <span className="min-w-0">
-            <span className="block truncate font-semibold">{track.name}</span>
-            <span
-              className={[
-                "block truncate text-xs",
-                selectedTrack?.id === track.id ? "text-black/75" : "text-[#a7a7a7]",
-              ].join(" ")}
-            >
-              {track.artistName}
+          <button
+            className="grid min-w-0 grid-cols-[42px_minmax(0,1fr)] items-center gap-3 text-left"
+            onClick={() => onSelect(track)}
+            type="button"
+          >
+            <Cover src={track.imageUrl} label={track.name} size="sm" />
+            <span className="min-w-0">
+              <span className="block truncate font-semibold">{track.name}</span>
+              <span
+                className={[
+                  "block truncate text-xs",
+                  selectedTrack?.id === track.id ? "text-black/75" : "text-[#a7a7a7]",
+                ].join(" ")}
+              >
+                {track.artistName}
+              </span>
             </span>
-          </span>
-        </button>
+          </button>
+          <OpenTrackActions selected={selectedTrack?.id === track.id} track={track} />
+        </article>
       ))}
     </div>
   );
@@ -738,7 +741,7 @@ function SearchResults({
 
 function RecommendationRow({ track }: { track: Recommendation }) {
   return (
-    <article className="grid gap-3 bg-[#121212] px-3 py-3 transition hover:bg-[#1f1f1f] md:grid-cols-[44px_minmax(0,1.6fr)_minmax(0,1fr)_92px] md:items-center">
+    <article className="grid gap-3 bg-[#121212] px-3 py-3 transition hover:bg-[#1f1f1f] md:grid-cols-[44px_minmax(0,1.6fr)_minmax(0,1fr)_132px] md:items-center">
       <div className="hidden text-sm text-[#a7a7a7] md:block">{track.rank}</div>
 
       <div className="flex min-w-0 items-center gap-3">
@@ -767,19 +770,73 @@ function RecommendationRow({ track }: { track: Recommendation }) {
           />
         </div>
         <span className="w-8 text-right text-sm font-bold text-white">{track.score}</span>
-        {track.spotifyUrl || track.lastFmUrl ? (
-          <a
-            className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[#a7a7a7] transition hover:bg-[#333] hover:text-white"
-            href={track.spotifyUrl ?? track.lastFmUrl}
-            rel="noreferrer"
-            target="_blank"
-          >
-            <ExternalLink size={15} aria-hidden="true" />
-            <span className="sr-only">Open {track.name}</span>
-          </a>
-        ) : null}
+        <OpenTrackActions track={track} />
       </div>
     </article>
+  );
+}
+
+function OpenTrackActions({
+  labeled = false,
+  selected = false,
+  track,
+}: {
+  labeled?: boolean;
+  selected?: boolean;
+  track: SimplifiedTrack;
+}) {
+  const spotifyClass = labeled
+    ? "inline-flex h-10 items-center justify-center gap-2 rounded-full bg-[#1ed760] px-4 text-xs font-black text-black transition hover:scale-[1.02] hover:bg-[#3be477]"
+    : [
+        "inline-flex h-8 w-8 items-center justify-center rounded-full transition",
+        selected ? "bg-black/15 text-black hover:bg-black/25" : "bg-[#242424] text-[#1ed760] hover:bg-[#333]",
+      ].join(" ");
+  const youtubeClass = labeled
+    ? "inline-flex h-10 items-center justify-center gap-2 rounded-full bg-[#242424] px-4 text-xs font-black text-white transition hover:scale-[1.02] hover:bg-[#333]"
+    : [
+        "inline-flex h-8 w-8 items-center justify-center rounded-full transition",
+        selected ? "bg-black/15 text-black hover:bg-black/25" : "bg-[#242424] text-white hover:bg-[#333]",
+      ].join(" ");
+
+  return (
+    <div className="flex shrink-0 items-center gap-1.5">
+      {track.spotifyUrl ? (
+        <a className={spotifyClass} href={track.spotifyUrl} rel="noreferrer" target="_blank">
+          <SpotifyIcon size={15} />
+          <span className={labeled ? "" : "sr-only"}>Open in Spotify</span>
+        </a>
+      ) : null}
+      <a className={youtubeClass} href={youtubeSearchUrl(track)} rel="noreferrer" target="_blank">
+        <YouTubeIcon size={15} />
+        <span className={labeled ? "" : "sr-only"}>Open in YouTube</span>
+      </a>
+    </div>
+  );
+}
+
+function youtubeSearchUrl(track: SimplifiedTrack) {
+  return `https://www.youtube.com/results?search_query=${encodeURIComponent(`${track.name} ${track.artistName}`)}`;
+}
+
+function SpotifyIcon({ size }: { size: number }) {
+  return (
+    <svg aria-hidden="true" height={size} viewBox="0 0 24 24" width={size}>
+      <path
+        d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm4.59 14.42a.77.77 0 0 1-1.06.26c-2.9-1.77-6.55-2.17-10.85-1.19a.77.77 0 0 1-.34-1.5c4.71-1.08 8.75-.61 12 1.38.36.22.48.69.25 1.05Zm1.22-2.72a.96.96 0 0 1-1.32.31c-3.32-2.04-8.39-2.63-12.31-1.44a.96.96 0 1 1-.56-1.84c4.49-1.36 10.08-.7 13.87 1.63.45.28.59.88.32 1.34Zm.1-2.83C13.93 8.51 7.36 8.29 3.56 9.44a1.15 1.15 0 1 1-.67-2.2c4.37-1.33 11.63-1.07 16.19 1.63a1.15 1.15 0 0 1-1.17 1.98Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+function YouTubeIcon({ size }: { size: number }) {
+  return (
+    <svg aria-hidden="true" height={size} viewBox="0 0 24 24" width={size}>
+      <path
+        d="M21.5 7.1a3 3 0 0 0-2.1-2.13C17.55 4.5 12 4.5 12 4.5s-5.55 0-7.4.47A3 3 0 0 0 2.5 7.1 31.4 31.4 0 0 0 2 12a31.4 31.4 0 0 0 .5 4.9 3 3 0 0 0 2.1 2.13c1.85.47 7.4.47 7.4.47s5.55 0 7.4-.47a3 3 0 0 0 2.1-2.13A31.4 31.4 0 0 0 22 12a31.4 31.4 0 0 0-.5-4.9ZM10 15.2V8.8l5.5 3.2L10 15.2Z"
+        fill="currentColor"
+      />
+    </svg>
   );
 }
 
