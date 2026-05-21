@@ -42,6 +42,37 @@ const initialSummary: RecommendationResponse["sourceSummary"] = {
   notes: [],
 };
 
+const PLAYLIST_RECOMMENDATION_SEED_LIMIT = 20;
+
+function idleSummary(lastFmConfigured = false): RecommendationResponse["sourceSummary"] {
+  return { ...initialSummary, lastFmConfigured };
+}
+
+function pickPlaylistSeedTracks(tracks: SimplifiedTrack[], limit: number) {
+  const uniqueTracks: SimplifiedTrack[] = [];
+  const seen = new Set<string>();
+
+  for (const track of tracks) {
+    const key = `${track.name.toLowerCase()}::${track.artistName.toLowerCase()}`;
+    if (!track.name || !track.artistName || seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    uniqueTracks.push(track);
+  }
+
+  if (uniqueTracks.length <= limit) {
+    return uniqueTracks;
+  }
+
+  const lastIndex = uniqueTracks.length - 1;
+  return Array.from({ length: limit }, (_, index) => {
+    const spreadIndex = Math.round((index * lastIndex) / (limit - 1));
+    return uniqueTracks[spreadIndex];
+  }).filter((track): track is SimplifiedTrack => Boolean(track));
+}
+
 export function AppShell({ accountControls, accountSettings, getAccountToken }: AppShellProps = {}) {
   const [session, setSession] = useState<ApiSessionResponse | null>(null);
   const [sessionLoading, setSessionLoading] = useState(true);
@@ -88,6 +119,11 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
     recommendations.length === 0 &&
     !sourceSummary.lastFmConfigured &&
     sourceSummary.provider !== "idle";
+
+  function resetRecommendationState(lastFmConfigured = session?.lastFmConfigured ?? sourceSummary.lastFmConfigured) {
+    setRecommendations([]);
+    setSourceSummary(idleSummary(lastFmConfigured));
+  }
 
   const fetchJson = useCallback(async function fetchJson<T>(url: string, init?: RequestInit) {
     const headers = new Headers(init?.headers);
@@ -145,12 +181,7 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
         const tracks = payload.tracks ?? [];
         setError(null);
         setSearchResults(tracks);
-        if (tracks.length > 0) {
-          setSelectedTrack((currentTrack) => {
-            const currentIsVisible = tracks.some((track) => track.id === currentTrack?.id);
-            return currentIsVisible ? currentTrack : tracks[0];
-          });
-        }
+        setSelectedTrack(tracks[0] ?? null);
       } catch (caught) {
         if (!controller.signal.aborted) {
           setError(caught instanceof Error ? caught.message : "Search failed.");
@@ -182,10 +213,12 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
         setSelectedPlaylistId("");
         setSelectedTrack(null);
         setRecommendations([]);
-        setSourceSummary({ ...initialSummary, lastFmConfigured: data.lastFmConfigured });
+        setSourceSummary(idleSummary(data.lastFmConfigured));
         return;
       }
 
+      setRecommendations([]);
+      setSourceSummary(idleSummary(data.lastFmConfigured));
       const playlistPayload = await fetchJson<{ playlists: PlaylistSummary[] }>("/api/playlists");
       setPlaylists(playlistPayload.playlists);
       await loadFirstAvailablePlaylist(playlistPayload.playlists);
@@ -209,6 +242,9 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
 
   async function loadPlaylistTracks(playlistId: string, forceLive = false, quiet = false) {
     setSelectedPlaylistId(playlistId);
+    if (!quiet) {
+      resetRecommendationState();
+    }
 
     if (!connected && !forceLive) {
       setError("Connect Spotify to load playlists.");
@@ -248,6 +284,8 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
 
     if (!searchTerm.trim()) {
       setSearchResults([]);
+      setSelectedTrack(null);
+      resetRecommendationState();
       return;
     }
 
@@ -259,9 +297,8 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
         `/api/search?q=${encodeURIComponent(searchTerm.trim())}`,
       );
       setSearchResults(payload.tracks);
-      if (payload.tracks[0]) {
-        setSelectedTrack(payload.tracks[0]);
-      }
+      setSelectedTrack(payload.tracks[0] ?? null);
+      resetRecommendationState();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Search failed.");
     } finally {
@@ -275,7 +312,12 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
       return;
     }
 
-    const seedTracks = mode === "playlist" ? tracks.slice(0, 25) : selectedTrack ? [selectedTrack] : [];
+    const seedTracks =
+      mode === "playlist"
+        ? pickPlaylistSeedTracks(tracks, PLAYLIST_RECOMMENDATION_SEED_LIMIT)
+        : selectedTrack
+          ? [selectedTrack]
+          : [];
     if (seedTracks.length === 0) {
       setError("Choose a playlist or song first.");
       return;
@@ -333,7 +375,10 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
             <div className="mt-5 grid grid-cols-2 gap-2 rounded-lg bg-[#0a0a0a] p-1">
               <button
                 className={modeButtonClass(mode === "playlist")}
-                onClick={() => setMode("playlist")}
+                onClick={() => {
+                  setMode("playlist");
+                  resetRecommendationState();
+                }}
                 type="button"
               >
                 <ListMusic size={16} aria-hidden="true" />
@@ -341,7 +386,10 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
               </button>
               <button
                 className={modeButtonClass(mode === "song")}
-                onClick={() => setMode("song")}
+                onClick={() => {
+                  setMode("song");
+                  resetRecommendationState();
+                }}
                 type="button"
               >
                 <Music2 size={16} aria-hidden="true" />
@@ -420,7 +468,11 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
                   <input
                     className="h-11 w-full rounded-full border border-transparent bg-[#242424] pl-10 pr-12 text-sm font-medium text-white outline-none transition placeholder:text-[#a7a7a7] hover:bg-[#2a2a2a] focus:border-[#1db954]"
                     id="song-search"
-                    onChange={(event) => setSearchTerm(event.target.value)}
+                    onChange={(event) => {
+                      setSearchTerm(event.target.value);
+                      setSelectedTrack(null);
+                      resetRecommendationState();
+                    }}
                     placeholder="What song?"
                     value={searchTerm}
                   />
@@ -444,7 +496,10 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
                   searching={searching}
                   selectedTrack={selectedTrack}
                   tracks={connected ? searchResults : []}
-                  onSelect={setSelectedTrack}
+                  onSelect={(track) => {
+                    setSelectedTrack(track);
+                    resetRecommendationState();
+                  }}
                 />
               </div>
             )}
@@ -544,7 +599,7 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
                 <p className="mt-1 text-sm text-[#a7a7a7]">
                   {recommendations.length > 0
                     ? "Ranked from listener-overlap sources and mapped back to Spotify."
-                    : emptyRecommendationMessage(sourceSummary, connected)}
+                    : emptyRecommendationMessage(sourceSummary, connected, mode)}
                 </p>
               </div>
             </div>
@@ -567,7 +622,7 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
                   </div>
                 </div>
               ) : (
-                <EmptyPanel connected={connected} summary={sourceSummary} />
+                <EmptyPanel connected={connected} mode={mode} summary={sourceSummary} />
               )}
             </div>
           </div>
@@ -862,21 +917,27 @@ function LoadingPanel() {
 
 function EmptyPanel({
   connected,
+  mode,
   summary,
 }: {
   connected: boolean;
+  mode: SourceMode;
   summary: RecommendationResponse["sourceSummary"];
 }) {
+  const hasRun = summary.provider !== "idle";
+
   return (
     <div className="rounded-lg border border-[#242424] bg-[#181818] p-6">
       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#242424] text-[#1db954]">
         <Headphones size={22} aria-hidden="true" />
       </div>
-      <h4 className="mt-4 text-lg font-bold">No listener-overlap songs yet</h4>
+      <h4 className="mt-4 text-lg font-bold">
+        {connected && !hasRun ? "Ready to find songs" : "No listener-overlap songs yet"}
+      </h4>
       <p className="mt-2 max-w-2xl text-sm leading-6 text-[#b3b3b3]">
-        {emptyRecommendationMessage(summary, connected)}
+        {emptyRecommendationMessage(summary, connected, mode)}
       </p>
-      {connected && !summary.lastFmConfigured ? (
+      {connected && hasRun && !summary.lastFmConfigured ? (
         <p className="mt-3 max-w-2xl text-sm leading-6 text-[#b3b3b3]">
           A Last.fm API key gives SongTwin a wider track similarity graph than the no-key ListenBrainz fallback.
         </p>
@@ -1024,16 +1085,26 @@ function signalClass(signal: Recommendation["signal"]) {
   }
 }
 
-function emptyRecommendationMessage(summary: RecommendationResponse["sourceSummary"], connected: boolean) {
+function emptyRecommendationMessage(
+  summary: RecommendationResponse["sourceSummary"],
+  connected: boolean,
+  mode: SourceMode,
+) {
   if (!connected) {
     return "Connect Spotify to choose a playlist or song and build recommendations from listener-overlap data.";
   }
 
-  if (!summary.lastFmConfigured) {
-    return "ListenBrainz did not return cross-artist listener matches for this seed. SongTwin is hiding same-artist Spotify catalog filler; add LASTFM_API_KEY for the stronger co-listening graph.";
+  if (summary.provider === "idle") {
+    return mode === "song"
+      ? "Search for a song, pick a result, then run Find songs to build recommendations."
+      : "Choose a playlist, then run Find songs to build recommendations from listener-overlap data.";
   }
 
-  return "No cross-artist listener matches came back for this seed. Try a broader playlist or a different source song.";
+  if (!summary.lastFmConfigured) {
+    return "ListenBrainz did not return cross-artist listener matches for this source. SongTwin is hiding same-artist Spotify catalog filler; add LASTFM_API_KEY for the stronger co-listening graph.";
+  }
+
+  return "No cross-artist listener matches came back for this source. Try a broader playlist or a different source song.";
 }
 
 function oauthErrorMessage(error: string) {

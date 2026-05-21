@@ -27,12 +27,15 @@ type RecommendationOptions = {
   limit?: number;
 };
 
+const MAX_RECOMMENDATION_SEEDS = 20;
+const MAX_LISTENBRAINZ_SEEDS = 4;
+
 export async function recommendFromSeeds(
   session: SpotifyTokenSession,
   seedTracks: SimplifiedTrack[],
   options: RecommendationOptions = {},
 ): Promise<RecommendationResponse> {
-  const seeds = dedupeTracks(seedTracks).slice(0, 10);
+  const seeds = dedupeTracks(seedTracks).slice(0, MAX_RECOMMENDATION_SEEDS);
   const limit = options.limit ?? 24;
   const notes: string[] = [];
 
@@ -57,7 +60,7 @@ export async function recommendFromSeeds(
         sourceSummary: {
           provider: "listenbrainz",
           lastFmConfigured: false,
-          seedsAnalyzed: Math.min(seeds.length, 4),
+          seedsAnalyzed: Math.min(seeds.length, MAX_LISTENBRAINZ_SEEDS),
           spotifyMatches: listenBrainz.filter((track) => track.matchedOnSpotify).length,
           notes: [
             "Using ListenBrainz collaborative listening because LASTFM_API_KEY is not configured.",
@@ -69,9 +72,9 @@ export async function recommendFromSeeds(
     return noCollaborativeMatches({
       provider: "listenbrainz",
       lastFmConfigured: false,
-      seedsAnalyzed: Math.min(seeds.length, 4),
+      seedsAnalyzed: Math.min(seeds.length, MAX_LISTENBRAINZ_SEEDS),
       notes: [
-        "ListenBrainz returned no cross-artist co-listening matches for this seed.",
+        "ListenBrainz returned no cross-artist co-listening matches for the analyzed seeds.",
         "Add LASTFM_API_KEY for a larger listener-overlap graph.",
       ],
     });
@@ -125,7 +128,7 @@ export async function recommendFromSeeds(
         sourceSummary: {
           provider: "listenbrainz",
           lastFmConfigured: true,
-          seedsAnalyzed: Math.min(seeds.length, 4),
+          seedsAnalyzed: Math.min(seeds.length, MAX_LISTENBRAINZ_SEEDS),
           spotifyMatches: listenBrainz.filter((track) => track.matchedOnSpotify).length,
           notes: ["Last.fm returned no cross-artist candidates, so ListenBrainz was used."],
         },
@@ -137,7 +140,7 @@ export async function recommendFromSeeds(
       lastFmConfigured: true,
       seedsAnalyzed: seeds.length,
       notes: [
-        "Last.fm and ListenBrainz returned no cross-artist co-listening matches for this seed.",
+        "Last.fm and ListenBrainz returned no cross-artist co-listening matches for the analyzed seeds.",
         "SongTwin is not showing same-artist catalog filler because it is not listener-overlap data.",
       ],
     });
@@ -170,7 +173,7 @@ async function listenBrainzRecommendations(
 ) {
   const seedMap = new Map<string, SimplifiedTrack>();
 
-  for (const seed of seeds.slice(0, 4)) {
+  for (const seed of seeds.slice(0, MAX_LISTENBRAINZ_SEEDS)) {
     const mbid = await findMusicBrainzRecordingMbid({
       name: seed.name,
       artistName: seed.artistName,
