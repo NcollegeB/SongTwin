@@ -11,10 +11,12 @@ import {
   Library,
   Mail,
   Music2,
+  PlayCircle,
   Radio,
   Search,
   ShieldCheck,
   Sparkles,
+  TrendingUp,
   Waves,
 } from "lucide-react";
 
@@ -22,6 +24,13 @@ const albumImages = [
   "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=500&q=80",
   "https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=500&q=80",
   "https://images.unsplash.com/photo-1483412033650-1015ddeb83d1?auto=format&fit=crop&w=500&q=80",
+];
+
+const previewRecommendations = [
+  { title: "Electric Feel", artist: "MGMT", fit: 96, signal: "Psych-pop overlap" },
+  { title: "Chamber of Reflection", artist: "Mac DeMarco", fit: 93, signal: "Dreamy groove match" },
+  { title: "Instant Crush", artist: "Daft Punk", fit: 90, signal: "Synth-pop listener link" },
+  { title: "Sweet Disposition", artist: "The Temper Trap", fit: 87, signal: "Indie anthem pull" },
 ];
 
 export function LandingPage() {
@@ -45,7 +54,7 @@ export function LandingPage() {
               <a className="hover:text-white" href="#contact">Contact</a>
             </div>
             <div className="flex items-center gap-2">
-              <Link className="connect-button secondary hidden xl:inline-flex" href="/app">
+              <Link className="connect-button secondary !hidden xl:!inline-flex" href="/app">
                 Sign in
               </Link>
               <Link className="connect-button" href="/app">
@@ -76,6 +85,62 @@ export function LandingPage() {
                 <a className="connect-button secondary min-h-12 px-6" href="#pricing">
                   See pricing
                 </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-black px-5 py-16 sm:px-8">
+        <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[420px_minmax(0,1fr)] lg:items-center">
+          <div>
+            <p className="text-sm font-bold uppercase tracking-[0.14em] text-[#1db954]">Sample discovery</p>
+            <h2 className="mt-3 max-w-2xl text-3xl font-black leading-tight tracking-normal sm:text-5xl">
+              Start with one song. See where the taste leads.
+            </h2>
+            <p className="mt-5 max-w-2xl text-lg leading-8 text-[#b3b3b3]">
+              Here is a static sample using Tame Impala as the source. SongTwin is designed to turn that starting point into nearby tracks from artists your taste already points toward.
+            </p>
+            <Link className="connect-button mt-7 min-h-12 px-6" href="/app">
+              Try your own song
+              <ArrowRight size={18} aria-hidden="true" />
+            </Link>
+          </div>
+
+          <div className="rounded-lg border border-[#242424] bg-[#121212] p-4 sm:p-5">
+            <div className="grid gap-4 sm:grid-cols-[180px_minmax(0,1fr)]">
+              <div className="rounded-lg bg-[#181818] p-4">
+                <div className="flex aspect-square items-center justify-center rounded bg-[#315a7d] text-center text-5xl font-black text-white">
+                  TI
+                </div>
+                <p className="mt-4 text-xs font-bold uppercase tracking-[0.14em] text-[#1db954]">Source song</p>
+                <h3 className="mt-2 text-xl font-black">The Less I Know The Better</h3>
+                <p className="mt-1 text-sm font-semibold text-[#a7a7a7]">Tame Impala</p>
+              </div>
+
+              <div className="grid gap-2">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-bold text-[#a7a7a7]">Songs to try next</p>
+                    <p className="text-xs font-semibold text-[#6f6f6f]">Static preview of the SongTwin result style</p>
+                  </div>
+                  <PlayCircle className="text-[#1db954]" size={30} aria-hidden="true" />
+                </div>
+                {previewRecommendations.map((song, index) => (
+                  <div className="grid grid-cols-[28px_minmax(0,1fr)_48px] items-center gap-3 rounded bg-black/35 p-3" key={song.title}>
+                    <div className="text-sm font-black text-[#a7a7a7]">{index + 1}</div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-black text-white">{song.title}</p>
+                      <p className="truncate text-xs font-semibold text-[#a7a7a7]">
+                        {song.artist} · {song.signal}
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-end gap-1 text-sm font-black text-[#1db954]">
+                      <TrendingUp size={14} aria-hidden="true" />
+                      {song.fit}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -145,11 +210,12 @@ export function LandingPage() {
               <span className="text-5xl font-black">$4.99</span>
               <span className="pb-2 text-sm font-semibold text-[#a7a7a7]">/ month</span>
             </div>
+            <p className="mt-3 text-sm font-bold text-[#1db954]">Start with a 3-day free trial</p>
             <p className="mt-4 text-sm leading-6 text-[#b3b3b3]">
-              Unlimited access to SongTwin discovery while your subscription is active.
+              Unlimited access to SongTwin discovery while your subscription is active. Checkout and billing are handled on Stripe.
             </p>
             <Link className="connect-button mt-6 min-h-12 w-full" href="/app">
-              Get access
+              Start free trial
               <ArrowRight size={18} />
             </Link>
             <div className="mt-5 flex items-center gap-2 text-xs font-semibold text-[#a7a7a7]">

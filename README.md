@@ -104,6 +104,8 @@ STRIPE_PRICE_ID=price_recurring_499_monthly
 STRIPE_WEBHOOK_SECRET=whsec_from_stripe_webhook
 ```
 
+SongTwin uses Stripe-hosted Checkout. A Stripe publishable key is not required for this redirect flow because the server creates the Checkout Session and returns Stripe's hosted checkout URL.
+
 `SPOTIFY_REDIRECT_URI` is optional in production. If it is omitted, SongTwin uses the current site origin and sends Spotify to:
 
 ```text
@@ -136,8 +138,9 @@ invoice.paid
 invoice.payment_failed
 ```
 
-5. Copy the webhook signing secret that starts with `whsec_`.
-6. Add the Firebase and Stripe environment variables in Vercel, then redeploy.
+5. SongTwin adds a 3-day free trial when it creates the Stripe Checkout Session.
+6. Copy the webhook signing secret that starts with `whsec_`.
+7. Add the Firebase and Stripe environment variables in Vercel, then redeploy.
 
 CLI flow:
 

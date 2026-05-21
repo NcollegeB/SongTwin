@@ -384,13 +384,13 @@ function SubscribeScreen({
           <div>
             <p className="text-sm font-bold uppercase tracking-[0.14em] text-[#1db954]">SongTwin Pro</p>
             <h1 className="mt-3 max-w-3xl text-5xl font-black tracking-normal sm:text-6xl">
-              Unlock listener-overlap recommendations.
+              Start with 3 days free.
             </h1>
             <p className="mt-5 max-w-2xl text-lg leading-8 text-[#b3b3b3]">
-              Subscribe to connect Spotify, choose playlists or songs, and get recommendations ranked by shared listener behavior instead of shallow same-artist filler.
+              Connect Spotify, choose playlists or songs, and find recommendations ranked by shared listener behavior. Checkout opens on Stripe, and your first charge starts after the trial.
             </p>
             <div className="mt-7 grid gap-3 sm:grid-cols-3">
-              {["Spotify playlist and song seeds", "Last.fm and ListenBrainz graph matching", "Direct Spotify links for every match"].map(
+              {["3-day free trial", "Spotify playlist and song seeds", "Direct Spotify links for every match"].map(
                 (item) => (
                   <div className="rounded-lg border border-[#242424] bg-[#121212] p-4" key={item}>
                     <CheckCircle2 className="text-[#1db954]" size={18} />
@@ -407,14 +407,15 @@ function SubscribeScreen({
               <span className="text-5xl font-black">$4.99</span>
               <span className="pb-2 text-sm font-semibold text-[#a7a7a7]">/ month</span>
             </div>
+            <p className="mt-3 text-sm font-bold text-[#1db954]">3-day free trial included</p>
             <ul className="mt-5 grid gap-3 text-sm text-[#d8d8d8]">
               <li>Private account login</li>
               <li>Subscription-backed access control</li>
-              <li>Billing management through Stripe</li>
+              <li>Secure checkout and billing through Stripe</li>
             </ul>
             <button className="connect-button mt-6 min-h-12 w-full" disabled={loading} onClick={onCheckout} type="button">
               {loading ? <Loader2 className="animate-spin" size={18} /> : <CreditCard size={18} />}
-              Subscribe for $4.99
+              Start free trial
             </button>
             {account.subscription.stripeCustomerId ? (
               <button className="connect-button secondary mt-3 min-h-12 w-full" onClick={onPortal} type="button">

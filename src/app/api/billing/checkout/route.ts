@@ -34,11 +34,13 @@ export async function POST(request: NextRequest) {
       client_reference_id: decoded.uid,
       line_items: [{ price: getSubscriptionPriceId(), quantity: 1 }],
       allow_promotion_codes: true,
+      payment_method_collection: "always",
       success_url: `${request.nextUrl.origin}/app?billing=success`,
       cancel_url: `${request.nextUrl.origin}/app?billing=cancelled`,
       metadata: { firebaseUid: decoded.uid },
       subscription_data: {
         metadata: { firebaseUid: decoded.uid },
+        trial_period_days: 3,
       },
     });
 
