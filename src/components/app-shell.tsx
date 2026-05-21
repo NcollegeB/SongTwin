@@ -519,7 +519,11 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
                     Find songs
                   </button>
                   {mode === "song" && selectedTrack ? (
-                    <OpenTrackActions labeled track={selectedTrack} />
+                    <OpenTrackActions
+                      key={`${selectedTrack.id ?? selectedTrack.spotifyUrl ?? selectedTrack.name}-${selectedTrack.artistName}`}
+                      labeled
+                      track={selectedTrack}
+                    />
                   ) : null}
                   <div className="grid grid-cols-3 gap-2">
                     <MiniStat icon={<Headphones size={15} />} label="Seeds" value={sourceSummary.seedsAnalyzed} />
@@ -785,6 +789,7 @@ function OpenTrackActions({
   selected?: boolean;
   track: SimplifiedTrack;
 }) {
+  const spotifyUrl = spotifyTrackUrl(track);
   const spotifyClass = labeled
     ? "inline-flex h-10 items-center justify-center gap-2 rounded-full bg-[#1ed760] px-4 text-xs font-black text-black transition hover:scale-[1.02] hover:bg-[#3be477]"
     : [
@@ -800,8 +805,8 @@ function OpenTrackActions({
 
   return (
     <div className="flex shrink-0 items-center gap-1.5">
-      {track.spotifyUrl ? (
-        <a className={spotifyClass} href={track.spotifyUrl} rel="noreferrer" target="_blank">
+      {spotifyUrl ? (
+        <a className={spotifyClass} href={spotifyUrl} rel="noreferrer" target="_blank">
           <SpotifyIcon size={15} />
           <span className={labeled ? "" : "sr-only"}>Open in Spotify</span>
         </a>
@@ -812,6 +817,10 @@ function OpenTrackActions({
       </a>
     </div>
   );
+}
+
+function spotifyTrackUrl(track: SimplifiedTrack) {
+  return track.id ? `https://open.spotify.com/track/${track.id}` : track.spotifyUrl;
 }
 
 function youtubeSearchUrl(track: SimplifiedTrack) {
