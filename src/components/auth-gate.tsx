@@ -7,6 +7,7 @@ import {
   signOut as firebaseSignOut,
   type User,
 } from "firebase/auth";
+import Link from "next/link";
 import {
   AlertCircle,
   CheckCircle2,
@@ -374,21 +375,34 @@ function SubscribeScreen({
   return (
     <main className="min-h-screen bg-black px-5 py-6 text-white">
       <div className="mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-5xl flex-col justify-center">
-        <div className="mb-8 flex items-center justify-between gap-4">
+        <header className="mb-8 grid gap-4 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded bg-[#1db954] text-black">
               <Music2 size={22} aria-hidden="true" />
             </div>
             <div>
               <p className="text-lg font-black">SongTwin</p>
-              <p className="text-xs text-[#a7a7a7]">{email}</p>
+              <p className="text-xs text-[#a7a7a7]">Signed in</p>
             </div>
           </div>
-          <button className="connect-button secondary" onClick={onSignOut} type="button">
-            <LogOut size={16} />
-            Sign out
-          </button>
-        </div>
+          <nav className="flex flex-wrap items-center gap-4 text-sm font-bold text-[#d8d8d8] lg:justify-center">
+            <Link className="hover:text-white" href="/#home">Home</Link>
+            <Link className="hover:text-white" href="/#about">About</Link>
+            <Link className="hover:text-white" href="/#pricing">Pricing</Link>
+            <Link className="hover:text-white" href="/#contact">Contact</Link>
+          </nav>
+          <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+            {email ? (
+              <div className="max-w-[260px] truncate rounded-full border border-white/10 bg-white/10 px-3 py-2 text-xs font-bold text-white">
+                {email}
+              </div>
+            ) : null}
+            <button className="connect-button secondary" onClick={onSignOut} type="button">
+              <LogOut size={16} />
+              Sign out
+            </button>
+          </div>
+        </header>
 
         <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-center">
           <div>

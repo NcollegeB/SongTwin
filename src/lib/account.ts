@@ -16,7 +16,7 @@ function configuredAdminEmails() {
   );
 }
 
-function accountIsAdmin(email?: string | null) {
+function emailIsAdmin(email?: string | null) {
   return Boolean(email && configuredAdminEmails().has(email.toLowerCase()));
 }
 
@@ -38,6 +38,7 @@ type VerifiedAccount = {
   stripeSubscriptionId?: string;
   currentPeriodEnd?: string;
   cancelAtPeriodEnd?: boolean;
+  admin?: boolean;
 };
 
 function bearerToken(request: NextRequest) {
@@ -80,7 +81,12 @@ function fromDoc(uid: string, data?: DocumentData): VerifiedAccount {
     subscriptionStatus: normalizeStatus(data?.subscriptionStatus),
     currentPeriodEnd: data?.currentPeriodEnd,
     cancelAtPeriodEnd: Boolean(data?.cancelAtPeriodEnd),
+    admin: Boolean(data?.admin),
   };
+}
+
+function accountIsAdmin(account: VerifiedAccount, email?: string | null) {
+  return Boolean(account.admin || emailIsAdmin(email ?? account.email));
 }
 
 export async function verifyAccountToken(request: NextRequest) {
@@ -129,7 +135,7 @@ export async function getAccountResponse(request: NextRequest): Promise<AccountR
 
   const decoded = await verifyAccountToken(request);
   const account = await ensureAccount(decoded.uid, decoded.email);
-  const admin = accountIsAdmin(decoded.email ?? account.email);
+  const admin = accountIsAdmin(account, decoded.email);
   const subscriptionStatus = admin ? "active" : account.subscriptionStatus;
 
   return {
@@ -153,7 +159,7 @@ export async function requireActiveAccount(request: NextRequest) {
   const decoded = await verifyAccountToken(request);
   const account = await ensureAccount(decoded.uid, decoded.email);
 
-  if (!accountIsAdmin(decoded.email ?? account.email) && !subscriptionIsActive(account.subscriptionStatus)) {
+  if (!accountIsAdmin(account, decoded.email) && !subscriptionIsActive(account.subscriptionStatus)) {
     throw new AccountAccessError("An active SongTwin subscription is required", 402);
   }
 

@@ -19,6 +19,7 @@ import {
   TrendingUp,
   Waves,
 } from "lucide-react";
+import { LandingAccountNav } from "./landing-account-nav";
 
 const albumImages = [
   "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=500&q=80",
@@ -43,29 +44,20 @@ export function LandingPage() {
         <HeroBackdrop />
         <div className="absolute inset-0 bg-black/58" />
         <div className="relative z-10 mx-auto flex min-h-[92vh] w-full max-w-7xl flex-col px-5 py-5 sm:px-8">
-          <nav className="flex items-center justify-between gap-4">
+          <nav className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
             <Link className="flex items-center gap-3" href="/">
               <span className="flex h-10 w-10 items-center justify-center rounded bg-[#1db954] text-black">
                 <Waves size={22} aria-hidden="true" />
               </span>
               <span className="text-xl font-black tracking-normal">SongTwin</span>
             </Link>
-            <div className="hidden items-center gap-7 text-sm font-bold text-[#d8d8d8] lg:flex">
+            <div className="order-3 flex w-full items-center justify-center gap-4 text-xs font-bold text-[#d8d8d8] sm:order-none sm:w-auto sm:gap-6 sm:text-sm">
               <a className="hover:text-white" href="#home">Home</a>
               <a className="hover:text-white" href="#about">About</a>
               <a className="hover:text-white" href="#pricing">Pricing</a>
               <a className="hover:text-white" href="#contact">Contact</a>
             </div>
-            <div className="flex items-center gap-2">
-              <Link className="connect-button secondary !hidden xl:!inline-flex" href="/app">
-                Sign in
-              </Link>
-              <Link className="connect-button" href="/app">
-                <span className="sm:hidden">Trial</span>
-                <span className="hidden sm:inline">Start free trial</span>
-                <ArrowRight size={16} aria-hidden="true" />
-              </Link>
-            </div>
+            <LandingAccountNav />
           </nav>
 
           <div className="flex flex-1 items-center pb-12 pt-16">

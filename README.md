@@ -107,7 +107,7 @@ SONGTWIN_ADMIN_EMAILS=skyryze02@gmail.com
 ```
 
 SongTwin uses Stripe-hosted Checkout. A Stripe publishable key is not required for this redirect flow because the server creates the Checkout Session and returns Stripe's hosted checkout URL.
-`SONGTWIN_ADMIN_EMAILS` is an optional comma-separated allowlist for permanent debug access without a Stripe subscription.
+`SONGTWIN_ADMIN_EMAILS` is an optional comma-separated allowlist for permanent debug access without a Stripe subscription. You can also grant one user permanent access by setting `admin: true` on their `users/{uid}` Firestore document.
 
 `SPOTIFY_REDIRECT_URI` is optional in production. If it is omitted, SongTwin uses the current site origin and sends Spotify to:
 
