@@ -468,7 +468,7 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
             {accountControls ? <div className="mt-4">{accountControls}</div> : null}
           </section>
 
-          <section className="min-h-0 flex-1 rounded-lg bg-[#121212] p-4">
+          <section className="min-h-0 flex-1 overflow-hidden rounded-lg bg-[#121212] p-4">
             <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center gap-2 text-sm font-semibold text-[#b3b3b3]">
                 <Headphones size={17} aria-hidden="true" />
@@ -506,7 +506,7 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
                 />
               </div>
             ) : (
-              <div>
+              <div className="flex h-full min-h-0 flex-col">
                 <form className="relative" onSubmit={searchSpotify}>
                   <label className="sr-only" htmlFor="song-search">
                     Search for a song
@@ -811,29 +811,47 @@ function SearchResults({
   const sourceTrackKeys = new Set(sourceTracks.map(songSeedKey));
 
   return (
-    <div className="mt-3 grid gap-2">
-      {connected && trimmedQuery.length > 0 && trimmedQuery.length < 2 ? (
-        <p className="rounded-lg bg-[#181818] p-3 text-sm text-[#a7a7a7]">Keep typing.</p>
-      ) : null}
-      {connected && trimmedQuery.length >= 2 && searching ? (
-        <div className="flex items-center gap-2 rounded-lg bg-[#181818] p-3 text-sm text-[#a7a7a7]">
-          <Loader2 className="animate-spin" size={16} />
-          Searching Spotify
+    <section className="mt-3 flex min-h-0 flex-1 flex-col rounded-lg border border-[#242424] bg-[#181818] p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-bold">Search Results</h2>
+          <p className="mt-0.5 text-xs text-[#a7a7a7]">
+            {tracks.length > 0 ? `${tracks.length} songs found` : "Search Spotify"}
+          </p>
         </div>
-      ) : null}
-      {connected && trimmedQuery.length >= 2 && !searching && tracks.length === 0 ? (
-        <p className="rounded-lg bg-[#181818] p-3 text-sm text-[#a7a7a7]">No songs found.</p>
-      ) : null}
+      </div>
 
-      {tracks.slice(0, 7).map((track) => (
-        <SearchResultRow
-          added={sourceTrackKeys.has(songSeedKey(track))}
-          key={`${track.id}-${track.name}`}
-          track={track}
-          onAdd={onAdd}
-        />
-      ))}
-    </div>
+      <div className="mt-3 min-h-[140px] flex-1 overflow-y-auto pr-1">
+        <div className="grid gap-2">
+          {connected && trimmedQuery.length === 0 ? (
+            <p className="rounded-lg bg-[#121212] p-3 text-sm text-[#a7a7a7]">
+              Search for a track, then add songs as source seeds.
+            </p>
+          ) : null}
+          {connected && trimmedQuery.length > 0 && trimmedQuery.length < 2 ? (
+            <p className="rounded-lg bg-[#121212] p-3 text-sm text-[#a7a7a7]">Keep typing.</p>
+          ) : null}
+          {connected && trimmedQuery.length >= 2 && searching ? (
+            <div className="flex items-center gap-2 rounded-lg bg-[#121212] p-3 text-sm text-[#a7a7a7]">
+              <Loader2 className="animate-spin" size={16} />
+              Searching Spotify
+            </div>
+          ) : null}
+          {connected && trimmedQuery.length >= 2 && !searching && tracks.length === 0 ? (
+            <p className="rounded-lg bg-[#121212] p-3 text-sm text-[#a7a7a7]">No songs found.</p>
+          ) : null}
+
+          {tracks.map((track) => (
+            <SearchResultRow
+              added={sourceTrackKeys.has(songSeedKey(track))}
+              key={`${track.id}-${track.name}`}
+              track={track}
+              onAdd={onAdd}
+            />
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -849,7 +867,7 @@ function SourceSongsPanel({
   onRemove: (track: SimplifiedTrack) => void;
 }) {
   return (
-    <section className="mt-3 rounded-lg border border-[#242424] bg-[#181818] p-3">
+    <section className="mt-3 flex max-h-[220px] min-h-[132px] flex-col rounded-lg border border-[#242424] bg-[#181818] p-3">
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-sm font-bold">Source Songs</h2>
@@ -868,7 +886,8 @@ function SourceSongsPanel({
         ) : null}
       </div>
 
-      <div className="mt-3 grid gap-2">
+      <div className="mt-3 min-h-0 flex-1 overflow-y-auto pr-1">
+        <div className="grid gap-2">
         {tracks.length === 0 ? (
           <p className="rounded-lg bg-[#121212] p-3 text-sm text-[#a7a7a7]">
             Add songs from the search results. Find songs uses this source list.
@@ -895,6 +914,7 @@ function SourceSongsPanel({
             </article>
           ))
         )}
+        </div>
       </div>
     </section>
   );
