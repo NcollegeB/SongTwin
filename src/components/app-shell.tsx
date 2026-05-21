@@ -13,9 +13,11 @@ import {
   Music2,
   Play,
   PlugZap,
+  Plus,
   Search,
   Sparkles,
   Waves,
+  X,
 } from "lucide-react";
 import type { FormEvent, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -43,9 +45,15 @@ const initialSummary: RecommendationResponse["sourceSummary"] = {
 };
 
 const PLAYLIST_RECOMMENDATION_SEED_LIMIT = 20;
+const SONG_RECOMMENDATION_SEED_LIMIT = 20;
+const RECOMMENDATION_RESULT_LIMIT = 24;
 
 function idleSummary(lastFmConfigured = false): RecommendationResponse["sourceSummary"] {
   return { ...initialSummary, lastFmConfigured };
+}
+
+function songSeedKey(track: SimplifiedTrack) {
+  return track.id ?? `${track.name.trim().toLowerCase()}::${track.artistName.trim().toLowerCase()}`;
 }
 
 function pickPlaylistSeedTracks(tracks: SimplifiedTrack[], limit: number) {
@@ -53,7 +61,7 @@ function pickPlaylistSeedTracks(tracks: SimplifiedTrack[], limit: number) {
   const seen = new Set<string>();
 
   for (const track of tracks) {
-    const key = `${track.name.toLowerCase()}::${track.artistName.toLowerCase()}`;
+    const key = songSeedKey(track);
     if (!track.name || !track.artistName || seen.has(key)) {
       continue;
     }
@@ -79,7 +87,7 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
   const [playlists, setPlaylists] = useState<PlaylistSummary[]>([]);
   const [selectedPlaylistId, setSelectedPlaylistId] = useState("");
   const [tracks, setTracks] = useState<SimplifiedTrack[]>([]);
-  const [selectedTrack, setSelectedTrack] = useState<SimplifiedTrack | null>(null);
+  const [sourceTracks, setSourceTracks] = useState<SimplifiedTrack[]>([]);
   const [mode, setMode] = useState<SourceMode>("playlist");
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [sourceSummary, setSourceSummary] =
@@ -94,6 +102,16 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
   const connected = Boolean(session?.connected);
   const selectedPlaylist = playlists.find((playlist) => playlist.id === selectedPlaylistId);
   const visibleTracks = useMemo(() => tracks.slice(0, 8), [tracks]);
+  const sourceSeedTracks = useMemo(
+    () =>
+      mode === "playlist"
+        ? pickPlaylistSeedTracks(tracks, PLAYLIST_RECOMMENDATION_SEED_LIMIT)
+        : sourceTracks,
+    [mode, sourceTracks, tracks],
+  );
+  const sourceSeedCount = sourceSeedTracks.length;
+  const displayedSeedCount =
+    sourceSummary.provider === "idle" ? sourceSeedCount : sourceSummary.seedsAnalyzed;
   const sourceName =
     !connected
       ? "Connect Spotify"
@@ -101,16 +119,29 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
       ? selectedPlaylist?.source === "liked"
         ? "Liked Songs"
         : selectedPlaylist?.name ?? "Playlist"
-      : selectedTrack?.name ?? "Pick a song";
+      : sourceTracks.length === 0
+        ? "Add source songs"
+        : sourceTracks.length === 1
+          ? sourceTracks[0].name
+          : `${sourceTracks.length} source songs`;
   const sourceArtist =
     !connected
       ? "Use your playlists and song searches to find listener-overlap matches"
       : mode === "playlist"
       ? selectedPlaylist?.owner ?? "Your library"
-      : selectedTrack?.artistName ?? "Spotify search";
+      : sourceTracks.length === 0
+        ? "Search Spotify and add songs as seeds"
+        : sourceTracks.length === 1
+          ? sourceTracks[0].artistName
+          : `Based on ${sourceTracks.slice(0, 3).map((track) => track.name).join(", ")}`;
   const sourceArtwork =
-    mode === "playlist" ? selectedPlaylist?.imageUrl ?? visibleTracks[0]?.imageUrl : selectedTrack?.imageUrl;
-  const sourceKindLabel = !connected ? "Spotify source" : mode === "playlist" ? "Source playlist" : "Source song";
+    mode === "playlist" ? selectedPlaylist?.imageUrl ?? visibleTracks[0]?.imageUrl : sourceTracks[0]?.imageUrl;
+  const sourceKindLabel = !connected ? "Spotify source" : mode === "playlist" ? "Source playlist" : "Source songs";
+  const sourceDetail = connected
+    ? mode === "playlist"
+      ? `${sourceSeedCount} seed songs will be pulled from this playlist. Results return up to ${RECOMMENDATION_RESULT_LIMIT} songs.`
+      : `${sourceSeedCount} source song${sourceSeedCount === 1 ? "" : "s"} selected. Results return up to ${RECOMMENDATION_RESULT_LIMIT} songs.`
+    : "";
   const graphReady =
     recommendations.length > 0 &&
     (sourceSummary.provider === "lastfm" || sourceSummary.provider === "listenbrainz");
@@ -181,7 +212,6 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
         const tracks = payload.tracks ?? [];
         setError(null);
         setSearchResults(tracks);
-        setSelectedTrack(tracks[0] ?? null);
       } catch (caught) {
         if (!controller.signal.aborted) {
           setError(caught instanceof Error ? caught.message : "Search failed.");
@@ -211,7 +241,7 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
         setPlaylists([]);
         setTracks([]);
         setSelectedPlaylistId("");
-        setSelectedTrack(null);
+        setSourceTracks([]);
         setRecommendations([]);
         setSourceSummary(idleSummary(data.lastFmConfigured));
         return;
@@ -263,7 +293,6 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
           : `/api/playlists/${encodeURIComponent(playlistId)}/tracks`;
       const payload = await fetchJson<{ tracks: SimplifiedTrack[] }>(endpoint);
       setTracks(payload.tracks);
-      setSelectedTrack(payload.tracks[0] ?? null);
       return payload.tracks.length > 0;
     } catch (caught) {
       if (!quiet) {
@@ -284,8 +313,6 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
 
     if (!searchTerm.trim()) {
       setSearchResults([]);
-      setSelectedTrack(null);
-      resetRecommendationState();
       return;
     }
 
@@ -297,8 +324,6 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
         `/api/search?q=${encodeURIComponent(searchTerm.trim())}`,
       );
       setSearchResults(payload.tracks);
-      setSelectedTrack(payload.tracks[0] ?? null);
-      resetRecommendationState();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Search failed.");
     } finally {
@@ -312,14 +337,9 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
       return;
     }
 
-    const seedTracks =
-      mode === "playlist"
-        ? pickPlaylistSeedTracks(tracks, PLAYLIST_RECOMMENDATION_SEED_LIMIT)
-        : selectedTrack
-          ? [selectedTrack]
-          : [];
+    const seedTracks = sourceSeedTracks;
     if (seedTracks.length === 0) {
-      setError("Choose a playlist or song first.");
+      setError(mode === "song" ? "Add at least one source song first." : "Choose a playlist first.");
       return;
     }
 
@@ -330,7 +350,7 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
       const payload = await fetchJson<RecommendationResponse>("/api/recommend", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ seedTracks, limit: 24 }),
+        body: JSON.stringify({ seedTracks, limit: RECOMMENDATION_RESULT_LIMIT }),
       });
       setRecommendations(payload.recommendations);
       setSourceSummary(payload.sourceSummary);
@@ -339,6 +359,35 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
     } finally {
       setRunning(false);
     }
+  }
+
+  function addSourceTrack(track: SimplifiedTrack) {
+    const key = songSeedKey(track);
+
+    if (sourceTracks.some((sourceTrack) => songSeedKey(sourceTrack) === key)) {
+      return;
+    }
+
+    if (sourceTracks.length >= SONG_RECOMMENDATION_SEED_LIMIT) {
+      setError(`You can add up to ${SONG_RECOMMENDATION_SEED_LIMIT} source songs for one run.`);
+      return;
+    }
+
+    setError(null);
+    setSourceTracks([...sourceTracks, track]);
+    resetRecommendationState();
+  }
+
+  function removeSourceTrack(track: SimplifiedTrack) {
+    const key = songSeedKey(track);
+    const nextTracks = sourceTracks.filter((sourceTrack) => songSeedKey(sourceTrack) !== key);
+    setSourceTracks(nextTracks);
+    resetRecommendationState();
+  }
+
+  function clearSourceTracks() {
+    setSourceTracks([]);
+    resetRecommendationState();
   }
 
   async function logout() {
@@ -451,6 +500,8 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
                 <PlaylistPreview
                   loading={loadingTracks}
                   playlist={selectedPlaylist}
+                  seedCount={sourceSeedCount}
+                  seedLimit={PLAYLIST_RECOMMENDATION_SEED_LIMIT}
                   tracks={visibleTracks}
                 />
               </div>
@@ -468,11 +519,7 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
                   <input
                     className="h-11 w-full rounded-full border border-transparent bg-[#242424] pl-10 pr-12 text-sm font-medium text-white outline-none transition placeholder:text-[#a7a7a7] hover:bg-[#2a2a2a] focus:border-[#1db954]"
                     id="song-search"
-                    onChange={(event) => {
-                      setSearchTerm(event.target.value);
-                      setSelectedTrack(null);
-                      resetRecommendationState();
-                    }}
+                    onChange={(event) => setSearchTerm(event.target.value)}
                     placeholder="What song?"
                     value={searchTerm}
                   />
@@ -490,16 +537,20 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
                   </button>
                 </form>
 
+                <SourceSongsPanel
+                  maxSeeds={SONG_RECOMMENDATION_SEED_LIMIT}
+                  tracks={sourceTracks}
+                  onClear={clearSourceTracks}
+                  onRemove={removeSourceTrack}
+                />
+
                 <SearchResults
                   connected={connected}
                   query={searchTerm}
                   searching={searching}
-                  selectedTrack={selectedTrack}
+                  sourceTracks={sourceTracks}
                   tracks={connected ? searchResults : []}
-                  onSelect={(track) => {
-                    setSelectedTrack(track);
-                    resetRecommendationState();
-                  }}
+                  onAdd={addSourceTrack}
                 />
               </div>
             )}
@@ -563,25 +614,28 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
                   {sourceName}
                 </h2>
                 <p className="mt-3 truncate text-sm font-medium text-[#d8e8de]">{sourceArtist}</p>
+                {sourceDetail ? (
+                  <p className="mt-2 text-sm font-semibold text-[#b7f7cb]">{sourceDetail}</p>
+                ) : null}
                 <div className="mt-5 flex flex-wrap items-center gap-3">
                   <button
                     className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-[#1db954] px-6 text-sm font-bold text-black shadow-lg shadow-black/25 transition hover:scale-[1.02] hover:bg-[#1ed760] disabled:cursor-not-allowed disabled:opacity-60"
-                    disabled={!connected || running || sessionLoading}
+                    disabled={!connected || running || sessionLoading || sourceSeedCount === 0}
                     onClick={runRecommendations}
                     type="button"
                   >
                     {running ? <Loader2 className="animate-spin" size={18} /> : <Play size={18} />}
                     Find songs
                   </button>
-                  {mode === "song" && selectedTrack ? (
+                  {mode === "song" && sourceTracks.length === 1 ? (
                     <OpenTrackActions
-                      key={`${selectedTrack.id ?? selectedTrack.spotifyUrl ?? selectedTrack.name}-${selectedTrack.artistName}`}
+                      key={`${sourceTracks[0].id ?? sourceTracks[0].spotifyUrl ?? sourceTracks[0].name}-${sourceTracks[0].artistName}`}
                       labeled
-                      track={selectedTrack}
+                      track={sourceTracks[0]}
                     />
                   ) : null}
                   <div className="grid grid-cols-3 gap-2">
-                    <MiniStat icon={<Headphones size={15} />} label="Seeds" value={sourceSummary.seedsAnalyzed} />
+                    <MiniStat icon={<Headphones size={15} />} label="Seeds" value={displayedSeedCount} />
                     <MiniStat icon={<Heart size={15} />} label="Songs" value={recommendations.length} />
                     <MiniStat icon={<CheckCircle2 size={15} />} label="Linked" value={sourceSummary.spotifyMatches} />
                   </div>
@@ -671,10 +725,14 @@ function MiniStat({
 function PlaylistPreview({
   loading,
   playlist,
+  seedCount,
+  seedLimit,
   tracks,
 }: {
   loading: boolean;
   playlist?: PlaylistSummary;
+  seedCount: number;
+  seedLimit: number;
   tracks: SimplifiedTrack[];
 }) {
   return (
@@ -688,6 +746,9 @@ function PlaylistPreview({
           </p>
         </div>
       </div>
+      <p className="mt-2 rounded-lg bg-[#0f2418] px-3 py-2 text-xs font-semibold text-[#b7f7cb]">
+        Pulls {seedCount} seed song{seedCount === 1 ? "" : "s"} for this run, up to {seedLimit} max.
+      </p>
 
       <div className="mt-3 max-h-[52vh] overflow-auto pr-1">
         {loading ? (
@@ -735,18 +796,19 @@ function SearchResults({
   connected,
   query,
   searching,
-  selectedTrack,
+  sourceTracks,
   tracks,
-  onSelect,
+  onAdd,
 }: {
   connected: boolean;
   query: string;
   searching: boolean;
-  selectedTrack: SimplifiedTrack | null;
+  sourceTracks: SimplifiedTrack[];
   tracks: SimplifiedTrack[];
-  onSelect: (track: SimplifiedTrack) => void;
+  onAdd: (track: SimplifiedTrack) => void;
 }) {
   const trimmedQuery = query.trim();
+  const sourceTrackKeys = new Set(sourceTracks.map(songSeedKey));
 
   return (
     <div className="mt-3 grid gap-2">
@@ -764,37 +826,124 @@ function SearchResults({
       ) : null}
 
       {tracks.slice(0, 7).map((track) => (
-        <article
-          className={[
-            "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-lg p-2 text-sm transition",
-            selectedTrack?.id === track.id
-              ? "bg-[#1db954] text-black"
-              : "bg-[#181818] text-white hover:bg-[#242424]",
-          ].join(" ")}
+        <SearchResultRow
+          added={sourceTrackKeys.has(songSeedKey(track))}
           key={`${track.id}-${track.name}`}
-        >
-          <button
-            className="grid min-w-0 grid-cols-[42px_minmax(0,1fr)] items-center gap-3 text-left"
-            onClick={() => onSelect(track)}
-            type="button"
-          >
-            <Cover src={track.imageUrl} label={track.name} size="sm" />
-            <span className="min-w-0">
-              <span className="block truncate font-semibold">{track.name}</span>
-              <span
-                className={[
-                  "block truncate text-xs",
-                  selectedTrack?.id === track.id ? "text-black/75" : "text-[#a7a7a7]",
-                ].join(" ")}
-              >
-                {track.artistName}
-              </span>
-            </span>
-          </button>
-          <OpenTrackActions selected={selectedTrack?.id === track.id} track={track} />
-        </article>
+          track={track}
+          onAdd={onAdd}
+        />
       ))}
     </div>
+  );
+}
+
+function SourceSongsPanel({
+  maxSeeds,
+  tracks,
+  onClear,
+  onRemove,
+}: {
+  maxSeeds: number;
+  tracks: SimplifiedTrack[];
+  onClear: () => void;
+  onRemove: (track: SimplifiedTrack) => void;
+}) {
+  return (
+    <section className="mt-3 rounded-lg border border-[#242424] bg-[#181818] p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-bold">Source Songs</h2>
+          <p className="mt-0.5 text-xs text-[#a7a7a7]">
+            {tracks.length} / {maxSeeds} seeds selected
+          </p>
+        </div>
+        {tracks.length > 0 ? (
+          <button
+            className="rounded-full bg-[#242424] px-3 py-1.5 text-xs font-bold text-[#d8d8d8] transition hover:bg-[#333]"
+            onClick={onClear}
+            type="button"
+          >
+            Clear
+          </button>
+        ) : null}
+      </div>
+
+      <div className="mt-3 grid gap-2">
+        {tracks.length === 0 ? (
+          <p className="rounded-lg bg-[#121212] p-3 text-sm text-[#a7a7a7]">
+            Add songs from the search results. Find songs uses this source list.
+          </p>
+        ) : (
+          tracks.map((track) => (
+            <article
+              className="grid grid-cols-[38px_minmax(0,1fr)_auto] items-center gap-2 rounded-lg bg-[#121212] p-2 text-sm"
+              key={songSeedKey(track)}
+            >
+              <Cover src={track.imageUrl} label={track.name} size="xs" />
+              <div className="min-w-0">
+                <p className="truncate font-semibold text-white">{track.name}</p>
+                <p className="truncate text-xs text-[#a7a7a7]">{track.artistName}</p>
+              </div>
+              <button
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#242424] text-[#d8d8d8] transition hover:bg-[#333] hover:text-white"
+                onClick={() => onRemove(track)}
+                type="button"
+              >
+                <X size={15} aria-hidden="true" />
+                <span className="sr-only">Remove source song</span>
+              </button>
+            </article>
+          ))
+        )}
+      </div>
+    </section>
+  );
+}
+
+function SearchResultRow({
+  added,
+  track,
+  onAdd,
+}: {
+  added: boolean;
+  track: SimplifiedTrack;
+  onAdd: (track: SimplifiedTrack) => void;
+}) {
+  return (
+    <article
+      className={[
+        "grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 rounded-lg p-2 text-sm transition",
+        added ? "bg-[#1db954] text-black" : "bg-[#181818] text-white hover:bg-[#242424]",
+      ].join(" ")}
+    >
+      <button
+        className="grid min-w-0 grid-cols-[42px_minmax(0,1fr)] items-center gap-3 text-left"
+        onClick={() => onAdd(track)}
+        type="button"
+      >
+        <Cover src={track.imageUrl} label={track.name} size="sm" />
+        <span className="min-w-0">
+          <span className="block truncate font-semibold">{track.name}</span>
+          <span className={["block truncate text-xs", added ? "text-black/75" : "text-[#a7a7a7]"].join(" ")}>
+            {track.artistName}
+          </span>
+        </span>
+      </button>
+      <button
+        className={[
+          "inline-flex h-8 items-center justify-center gap-1.5 rounded-full px-3 text-xs font-black transition",
+          added
+            ? "bg-black/15 text-black hover:bg-black/25"
+            : "bg-[#1db954] text-black hover:bg-[#1ed760]",
+        ].join(" ")}
+        onClick={() => onAdd(track)}
+        type="button"
+      >
+        {added ? <CheckCircle2 size={14} aria-hidden="true" /> : <Plus size={14} aria-hidden="true" />}
+        {added ? "Added" : "Add"}
+      </button>
+      <OpenTrackActions selected={added} track={track} />
+    </article>
   );
 }
 
@@ -1096,7 +1245,7 @@ function emptyRecommendationMessage(
 
   if (summary.provider === "idle") {
     return mode === "song"
-      ? "Search for a song, pick a result, then run Find songs to build recommendations."
+      ? "Search for songs, add them to Source Songs, then run Find songs to build recommendations."
       : "Choose a playlist, then run Find songs to build recommendations from listener-overlap data.";
   }
 
