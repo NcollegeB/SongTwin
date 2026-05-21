@@ -101,7 +101,6 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
 
   const connected = Boolean(session?.connected);
   const selectedPlaylist = playlists.find((playlist) => playlist.id === selectedPlaylistId);
-  const visibleTracks = useMemo(() => tracks.slice(0, 8), [tracks]);
   const sourceSeedTracks = useMemo(
     () =>
       mode === "playlist"
@@ -135,7 +134,7 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
           ? sourceTracks[0].artistName
           : `Based on ${sourceTracks.slice(0, 3).map((track) => track.name).join(", ")}`;
   const sourceArtwork =
-    mode === "playlist" ? selectedPlaylist?.imageUrl ?? visibleTracks[0]?.imageUrl : sourceTracks[0]?.imageUrl;
+    mode === "playlist" ? selectedPlaylist?.imageUrl ?? tracks[0]?.imageUrl : sourceTracks[0]?.imageUrl;
   const sourceKindLabel = !connected ? "Spotify source" : mode === "playlist" ? "Source playlist" : "Source songs";
   const sourceDetail = connected
     ? mode === "playlist"
@@ -502,7 +501,7 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
                   playlist={selectedPlaylist}
                   seedCount={sourceSeedCount}
                   seedLimit={PLAYLIST_RECOMMENDATION_SEED_LIMIT}
-                  tracks={visibleTracks}
+                  tracks={tracks}
                 />
               </div>
             ) : (
@@ -735,6 +734,12 @@ function PlaylistPreview({
   seedLimit: number;
   tracks: SimplifiedTrack[];
 }) {
+  const totalTracks = playlist?.totalTracks ?? tracks.length;
+  const loadedTrackLabel =
+    totalTracks > tracks.length
+      ? `Showing ${tracks.length} loaded songs from ${totalTracks}`
+      : `Showing ${tracks.length} songs`;
+
   return (
     <div className="min-h-0">
       <div className="flex items-center gap-3 rounded-lg bg-[#181818] p-3">
@@ -749,8 +754,9 @@ function PlaylistPreview({
       <p className="mt-2 rounded-lg bg-[#0f2418] px-3 py-2 text-xs font-semibold text-[#b7f7cb]">
         Pulls {seedCount} seed song{seedCount === 1 ? "" : "s"} for this run, up to {seedLimit} max.
       </p>
+      <p className="mt-2 text-xs font-medium text-[#a7a7a7]">{loadedTrackLabel}</p>
 
-      <div className="mt-3 max-h-[52vh] overflow-auto pr-1">
+      <div className="mt-3 max-h-[52vh] overflow-y-auto pr-1">
         {loading ? (
           <div className="flex items-center gap-2 rounded-lg bg-[#181818] p-3 text-sm text-[#a7a7a7]">
             <Loader2 className="animate-spin" size={16} />
