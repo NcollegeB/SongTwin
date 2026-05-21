@@ -158,6 +158,8 @@ export function AuthGate({ children }: AuthGateProps) {
       } else {
         await signInWithEmailAndPassword(auth, email.trim(), password);
       }
+
+      window.location.assign("/#pricing");
     } catch (caught) {
       setError(authErrorMessage(caught));
     } finally {

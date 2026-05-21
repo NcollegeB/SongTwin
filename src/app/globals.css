@@ -6,8 +6,8 @@
   --surface: #121212;
   --line: #242424;
   --muted: #a7a7a7;
-  --accent: #1db954;
-  --teal: #1ed760;
+  --accent: #1ed760;
+  --teal: #3be477;
   --coral: #ff6b5f;
   --blue: #315a7d;
   --amber: #f5b84b;
@@ -56,7 +56,8 @@ option {
   justify-content: center;
   gap: 8px;
   border-radius: 999px;
-  background: #1db954;
+  background: #1ed760;
+  box-shadow: 0 12px 32px rgba(30, 215, 96, 0.22);
   padding: 0 16px;
   color: #000000;
   font-size: 14px;
@@ -67,7 +68,7 @@ option {
 }
 
 .connect-button:hover {
-  background: #1ed760;
+  background: #3be477;
   transform: scale(1.02);
 }
 
@@ -78,7 +79,7 @@ option {
 }
 
 .connect-button:disabled:hover {
-  background: #1db954;
+  background: #1ed760;
   transform: none;
 }
 

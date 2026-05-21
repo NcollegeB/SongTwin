@@ -26,6 +26,9 @@ const albumImages = [
   "https://images.unsplash.com/photo-1483412033650-1015ddeb83d1?auto=format&fit=crop&w=500&q=80",
 ];
 
+const currentsCover =
+  "https://image-cdn-fa.spotifycdn.com/image/ab67616d00001e029e1cfc756886ac782e363d79";
+
 const previewRecommendations = [
   { title: "Electric Feel", artist: "MGMT", fit: 96, signal: "Psych-pop overlap" },
   { title: "Chamber of Reflection", artist: "Mac DeMarco", fit: 93, signal: "Dreamy groove match" },
@@ -58,8 +61,8 @@ export function LandingPage() {
                 Sign in
               </Link>
               <Link className="connect-button" href="/app">
-                <span className="sm:hidden">Start</span>
-                <span className="hidden sm:inline">Start listening</span>
+                <span className="sm:hidden">Trial</span>
+                <span className="hidden sm:inline">Start free trial</span>
                 <ArrowRight size={16} aria-hidden="true" />
               </Link>
             </div>
@@ -69,17 +72,17 @@ export function LandingPage() {
             <div className="max-w-3xl">
               <p className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-sm font-bold text-[#d8f7e2] ring-1 ring-white/15">
                 <Sparkles size={15} aria-hidden="true" />
-                Spotify-powered discovery for people who want better recommendations
+                $4.99/mo after a 3-day free trial
               </p>
               <h1 className="mt-6 max-w-4xl text-5xl font-black leading-[1.02] tracking-normal sm:text-7xl lg:text-8xl">
-                Find your next perfect song.
+                Find your perfect song now.
               </h1>
               <p className="mt-6 max-w-2xl text-xl leading-9 text-[#e6eee9]">
-                SongTwin starts with a song or playlist you already love, then finds tracks that fit the same listener taste. Less random browsing. Fewer same-artist repeats. More songs that actually feel right.
+                SongTwin starts with a song or playlist you already love, then finds tracks that fit the same listener taste. Start free for 3 days, then keep discovering for $4.99/month.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <Link className="connect-button min-h-12 px-6" href="/app">
-                  Find songs now
+                  Start 3-day free trial
                   <ArrowRight size={18} aria-hidden="true" />
                 </Link>
                 <a className="connect-button secondary min-h-12 px-6" href="#pricing">
@@ -110,9 +113,11 @@ export function LandingPage() {
           <div className="rounded-lg border border-[#242424] bg-[#121212] p-4 sm:p-5">
             <div className="grid gap-4 sm:grid-cols-[180px_minmax(0,1fr)]">
               <div className="rounded-lg bg-[#181818] p-4">
-                <div className="flex aspect-square items-center justify-center rounded bg-[#315a7d] text-center text-5xl font-black text-white">
-                  TI
-                </div>
+                <img
+                  alt="Currents album cover by Tame Impala"
+                  className="aspect-square w-full rounded object-cover shadow-xl shadow-black/50"
+                  src={currentsCover}
+                />
                 <p className="mt-4 text-xs font-bold uppercase tracking-[0.14em] text-[#1db954]">Source song</p>
                 <h3 className="mt-2 text-xl font-black">The Less I Know The Better</h3>
                 <p className="mt-1 text-sm font-semibold text-[#a7a7a7]">Tame Impala</p>
@@ -210,7 +215,7 @@ export function LandingPage() {
               <span className="text-5xl font-black">$4.99</span>
               <span className="pb-2 text-sm font-semibold text-[#a7a7a7]">/ month</span>
             </div>
-            <p className="mt-3 text-sm font-bold text-[#1db954]">Start with a 3-day free trial</p>
+            <p className="mt-3 text-sm font-bold text-[#1ed760]">3-day free trial, then $4.99/month</p>
             <p className="mt-4 text-sm leading-6 text-[#b3b3b3]">
               Unlimited access to SongTwin discovery while your subscription is active. Checkout and billing are handled on Stripe.
             </p>
