@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import type { FormEvent, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { AccountSettingsStrip } from "./account-settings-strip";
 import { firebaseClientConfigured, getFirebaseClientAuth } from "@/lib/firebase-client";
 import type { AccountResponse } from "@/lib/types";
 
@@ -340,7 +341,7 @@ export function AccountControls({
         </button>
         <button className="connect-button secondary !min-h-9 !px-3 !text-xs" onClick={onSignOut} type="button">
           <LogOut size={14} aria-hidden="true" />
-          Account
+          Sign out
         </button>
       </div>
       {account.subscription.cancelAtPeriodEnd ? (
@@ -349,6 +350,30 @@ export function AccountControls({
       {account.admin ? (
         <p className="mt-3 text-xs leading-5 text-[#a7a7a7]">Permanent debug access from the admin allowlist.</p>
       ) : null}
+    </div>
+  );
+}
+
+export function TopAccountSettings({
+  account,
+  email,
+  onPortal,
+  onSignOut,
+}: {
+  account: AccountResponse;
+  email?: string | null;
+  onPortal: () => Promise<void>;
+  onSignOut: () => Promise<void>;
+}) {
+  return (
+    <div className="rounded-lg bg-[#121212] p-2">
+      <AccountSettingsStrip
+        account={account}
+        className="rounded-lg bg-[#181818]/80"
+        email={email}
+        onPortal={onPortal}
+        onSignOut={onSignOut}
+      />
     </div>
   );
 }
@@ -391,17 +416,15 @@ function SubscribeScreen({
             <Link className="hover:text-white" href="/#pricing">Pricing</Link>
             <Link className="hover:text-white" href="/#contact">Contact</Link>
           </nav>
-          <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-            {email ? (
-              <div className="max-w-[260px] truncate rounded-full border border-white/10 bg-white/10 px-3 py-2 text-xs font-bold text-white">
-                {email}
-              </div>
-            ) : null}
-            <button className="connect-button secondary" onClick={onSignOut} type="button">
-              <LogOut size={16} />
-              Sign out
-            </button>
-          </div>
+          <AccountSettingsStrip
+            account={account}
+            className="lg:justify-end"
+            email={email}
+            onCheckout={onCheckout}
+            onPortal={onPortal}
+            onSignOut={onSignOut}
+            submitting={loading}
+          />
         </header>
 
         <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-center">

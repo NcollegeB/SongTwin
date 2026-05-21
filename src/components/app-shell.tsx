@@ -31,6 +31,7 @@ import type {
 type SourceMode = "playlist" | "song";
 type AppShellProps = {
   accountControls?: ReactNode;
+  accountSettings?: ReactNode;
   getAccountToken?: () => Promise<string | null>;
 };
 
@@ -42,7 +43,7 @@ const initialSummary: RecommendationResponse["sourceSummary"] = {
   notes: [],
 };
 
-export function AppShell({ accountControls, getAccountToken }: AppShellProps = {}) {
+export function AppShell({ accountControls, accountSettings, getAccountToken }: AppShellProps = {}) {
   const [session, setSession] = useState<ApiSessionResponse | null>(null);
   const [sessionLoading, setSessionLoading] = useState(true);
   const [playlists, setPlaylists] = useState<PlaylistSummary[]>([]);
@@ -316,8 +317,10 @@ export function AppShell({ accountControls, getAccountToken }: AppShellProps = {
 
   return (
     <main className="min-h-screen bg-black p-2 text-white sm:p-3">
-      <div className="mx-auto grid min-h-[calc(100vh-1rem)] w-full max-w-[1500px] gap-2 lg:grid-cols-[310px_minmax(0,1fr)]">
-        <aside className="flex min-h-0 flex-col gap-2">
+      <div className="mx-auto flex min-h-[calc(100vh-1rem)] w-full max-w-[1500px] flex-col gap-2">
+        {accountSettings}
+        <div className="grid min-h-0 flex-1 gap-2 lg:grid-cols-[310px_minmax(0,1fr)]">
+          <aside className="flex min-h-0 flex-col gap-2">
           <section className="rounded-lg bg-[#121212] p-4">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
@@ -451,9 +454,9 @@ export function AppShell({ accountControls, getAccountToken }: AppShellProps = {
               </div>
             )}
           </section>
-        </aside>
+          </aside>
 
-        <section className="min-w-0 overflow-hidden rounded-lg bg-[#121212]">
+          <section className="min-w-0 overflow-hidden rounded-lg bg-[#121212]">
           <div className="bg-[linear-gradient(180deg,#1f4f35_0%,#163525_34%,#121212_100%)] px-4 pb-6 pt-4 sm:px-6 lg:px-8">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex min-w-0 items-center gap-3">
@@ -566,7 +569,8 @@ export function AppShell({ accountControls, getAccountToken }: AppShellProps = {
               )}
             </div>
           </div>
-        </section>
+          </section>
+        </div>
       </div>
     </main>
   );

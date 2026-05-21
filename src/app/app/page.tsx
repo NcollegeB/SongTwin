@@ -1,6 +1,6 @@
 "use client";
 
-import { AccountControls, AuthGate } from "@/components/auth-gate";
+import { AccountControls, AuthGate, TopAccountSettings } from "@/components/auth-gate";
 import { AppShell } from "@/components/app-shell";
 
 export default function SongTwinAppPage() {
@@ -10,6 +10,14 @@ export default function SongTwinAppPage() {
         <AppShell
           accountControls={
             <AccountControls
+              account={account}
+              email={account.email}
+              onPortal={openBillingPortal}
+              onSignOut={signOut}
+            />
+          }
+          accountSettings={
+            <TopAccountSettings
               account={account}
               email={account.email}
               onPortal={openBillingPortal}

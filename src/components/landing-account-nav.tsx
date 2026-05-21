@@ -1,16 +1,40 @@
 "use client";
 
 import { onAuthStateChanged, signOut as firebaseSignOut, type User } from "firebase/auth";
-import { ArrowRight, LogOut, UserCircle } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { AccountSettingsStrip } from "./account-settings-strip";
 import { firebaseClientConfigured, getFirebaseClientAuth } from "@/lib/firebase-client";
+import type { AccountResponse } from "@/lib/types";
 
 export function LandingAccountNav() {
   const configured = firebaseClientConfigured();
   const auth = useMemo(() => (configured ? getFirebaseClientAuth() : null), [configured]);
+  const [account, setAccount] = useState<AccountResponse | null>(null);
+  const [accountLoading, setAccountLoading] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [ready, setReady] = useState(!configured);
+  const [submitting, setSubmitting] = useState(false);
+
+  const accountRequest = useCallback(async function accountRequest<T>(
+    path: string,
+    currentUser: User,
+    init?: RequestInit,
+  ) {
+    const token = await currentUser.getIdToken();
+    const headers = new Headers(init?.headers);
+    headers.set("Authorization", `Bearer ${token}`);
+
+    const response = await fetch(path, { ...init, headers });
+    const payload = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error(payload.error || `Request failed: ${response.status}`);
+    }
+
+    return payload as T;
+  }, []);
 
   useEffect(() => {
     if (!auth) {
@@ -20,12 +44,64 @@ export function LandingAccountNav() {
     return onAuthStateChanged(auth, (nextUser) => {
       setUser(nextUser);
       setReady(true);
+
+      if (!nextUser) {
+        setAccount(null);
+        setAccountLoading(false);
+        return;
+      }
+
+      setAccountLoading(true);
+      void accountRequest<AccountResponse>("/api/account", nextUser)
+        .then(setAccount)
+        .catch(() => setAccount(null))
+        .finally(() => setAccountLoading(false));
     });
-  }, [auth]);
+  }, [accountRequest, auth]);
 
   async function signOut() {
     if (auth) {
       await firebaseSignOut(auth);
+    }
+  }
+
+  async function startCheckout() {
+    if (!user) {
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      const payload = await accountRequest<{ url?: string }>("/api/billing/checkout", user, {
+        method: "POST",
+      });
+
+      if (payload.url) {
+        window.location.assign(payload.url);
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function openBillingPortal() {
+    if (!user) {
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      const payload = await accountRequest<{ url?: string }>("/api/billing/portal", user, {
+        method: "POST",
+      });
+
+      if (payload.url) {
+        window.location.assign(payload.url);
+      }
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -35,21 +111,16 @@ export function LandingAccountNav() {
 
   if (user) {
     return (
-      <div className="flex min-w-0 items-center gap-2">
-        <div className="hidden max-w-[220px] items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-2 text-xs font-bold text-white sm:flex">
-          <UserCircle size={15} className="shrink-0 text-[#1ed760]" aria-hidden="true" />
-          <span className="truncate">{user.email}</span>
-        </div>
-        <Link className="connect-button" href="/app">
-          <span className="sm:hidden">Open</span>
-          <span className="hidden sm:inline">Open SongTwin</span>
-          <ArrowRight size={16} aria-hidden="true" />
-        </Link>
-        <button className="connect-button secondary !hidden lg:!inline-flex" onClick={signOut} type="button">
-          <LogOut size={15} aria-hidden="true" />
-          Sign out
-        </button>
-      </div>
+      <AccountSettingsStrip
+        account={account}
+        email={user.email}
+        loading={accountLoading}
+        onCheckout={startCheckout}
+        onPortal={openBillingPortal}
+        onSignOut={signOut}
+        showOpenApp
+        submitting={submitting}
+      />
     );
   }
 
