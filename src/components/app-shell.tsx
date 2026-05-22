@@ -766,7 +766,7 @@ export function AppShell({ accountSettings, getAccountToken }: AppShellProps = {
                 <LoadingPanel />
               ) : recommendations.length > 0 ? (
                 <div className="overflow-hidden rounded-lg border border-[#242424]">
-                  <div className="grid grid-cols-[44px_minmax(0,1.6fr)_minmax(0,1fr)_132px] gap-3 border-b border-[#242424] bg-black/20 px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-[#a7a7a7] max-md:hidden">
+                  <div className="grid grid-cols-[44px_minmax(0,1.45fr)_minmax(0,1fr)_172px] gap-3 border-b border-[#242424] bg-black/20 px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-[#a7a7a7] max-md:hidden">
                     <span>#</span>
                     <span>Title</span>
                     <span>Signal</span>
@@ -1173,7 +1173,7 @@ function RecommendationRow({
   track,
 }: { track: Recommendation } & PreviewControls) {
   return (
-    <article className="grid gap-3 bg-[#121212] px-3 py-3 transition hover:bg-[#1f1f1f] md:grid-cols-[44px_minmax(0,1.6fr)_minmax(0,1fr)_132px] md:items-center">
+    <article className="grid gap-3 bg-[#121212] px-3 py-3 transition hover:bg-[#1f1f1f] md:grid-cols-[44px_minmax(0,1.45fr)_minmax(0,1fr)_172px] md:items-center">
       <div className="hidden text-sm text-[#a7a7a7] md:block">{track.rank}</div>
 
       <div className="flex min-w-0 items-center gap-3">
@@ -1225,18 +1225,27 @@ function OpenTrackActions({
 } & PreviewControls) {
   const spotifyUrl = spotifyTrackUrl(track);
   const previewActive = activePreviewKey === songSeedKey(track);
+  const hasPreview = Boolean(track.previewUrl);
   const previewClass = labeled
     ? [
         "inline-flex h-10 items-center justify-center gap-2 rounded-full px-4 text-xs font-black transition hover:scale-[1.02]",
-        previewActive ? "bg-white text-black" : "bg-[#242424] text-white hover:bg-[#333]",
+        hasPreview
+          ? previewActive
+            ? "bg-white text-black"
+            : "bg-[#242424] text-white hover:bg-[#333]"
+          : "cursor-not-allowed bg-[#1a1a1a] text-[#737373]",
       ].join(" ")
     : [
         "inline-flex h-8 w-8 items-center justify-center rounded-full transition",
-        selected
-          ? "bg-black/15 text-black hover:bg-black/25"
-          : previewActive
-            ? "bg-white text-black"
-            : "bg-[#242424] text-white hover:bg-[#333]",
+        hasPreview
+          ? selected
+            ? "bg-black/15 text-black hover:bg-black/25"
+            : previewActive
+              ? "bg-white text-black"
+              : "bg-[#242424] text-white hover:bg-[#333]"
+          : selected
+            ? "cursor-not-allowed bg-black/10 text-black/35"
+            : "cursor-not-allowed bg-[#1a1a1a] text-[#737373]",
       ].join(" ");
   const spotifyClass = labeled
     ? "inline-flex h-10 items-center justify-center gap-2 rounded-full bg-[#1ed760] px-4 text-xs font-black text-black transition hover:scale-[1.02] hover:bg-[#3be477]"
@@ -1253,17 +1262,24 @@ function OpenTrackActions({
 
   return (
     <div className="flex shrink-0 items-center gap-1.5">
-      {track.previewUrl ? (
-        <button
-          className={previewClass}
-          onClick={() => onTogglePreview(track)}
-          title={previewActive ? "Stop preview" : "Play 10-second preview"}
-          type="button"
-        >
-          {previewActive ? <Pause size={15} aria-hidden="true" /> : <Volume2 size={15} aria-hidden="true" />}
-          <span className={labeled ? "" : "sr-only"}>{previewActive ? "Stop preview" : "Preview"}</span>
-        </button>
-      ) : null}
+      <button
+        className={previewClass}
+        disabled={!hasPreview}
+        onClick={() => onTogglePreview(track)}
+        title={
+          hasPreview
+            ? previewActive
+              ? "Stop preview"
+              : "Play 10-second preview"
+            : "Spotify did not provide a preview for this song"
+        }
+        type="button"
+      >
+        {previewActive ? <Pause size={15} aria-hidden="true" /> : <Volume2 size={15} aria-hidden="true" />}
+        <span className={labeled ? "" : "sr-only"}>
+          {hasPreview ? (previewActive ? "Stop preview" : "Preview") : "No preview"}
+        </span>
+      </button>
       {spotifyUrl ? (
         <a className={spotifyClass} href={spotifyUrl} rel="noreferrer" target="_blank">
           <SpotifyIcon size={15} />
