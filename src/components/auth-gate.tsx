@@ -13,7 +13,6 @@ import {
   CheckCircle2,
   CreditCard,
   Loader2,
-  LogOut,
   Music2,
   ShieldCheck,
   Sparkles,
@@ -347,57 +346,6 @@ export function AuthGate({ children, requireSubscription = true }: AuthGateProps
   });
 }
 
-export function AccountControls({
-  account,
-  displayName,
-  email,
-  onPortal,
-  onSignOut,
-}: {
-  account: AccountResponse;
-  displayName?: string | null;
-  email?: string | null;
-  onPortal: () => Promise<void>;
-  onSignOut: () => Promise<void>;
-}) {
-  const identityLabel = displayName?.trim() || email || (account.admin ? "Admin account" : "Paid account");
-
-  return (
-    <div className="rounded-lg border border-[#242424] bg-[#181818] p-3">
-      <div className="flex items-center gap-2 text-xs font-bold text-[#1db954]">
-        <CheckCircle2 size={15} aria-hidden="true" />
-        {account.admin ? "SongTwin Admin" : "SongTwin Pro"}
-      </div>
-      <p className="mt-1 truncate text-xs text-[#a7a7a7]">{identityLabel}</p>
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        <Link className="connect-button secondary !min-h-9 !px-3 !text-xs" href="/account">
-          <ShieldCheck size={14} aria-hidden="true" />
-          Account
-        </Link>
-        <button
-          className="connect-button secondary !min-h-9 !px-3 !text-xs"
-          disabled={account.admin}
-          onClick={onPortal}
-          type="button"
-        >
-          <CreditCard size={14} aria-hidden="true" />
-          Billing
-        </button>
-        <button className="connect-button secondary col-span-2 !min-h-9 !px-3 !text-xs" onClick={onSignOut} type="button">
-          <LogOut size={14} aria-hidden="true" />
-          Sign out
-        </button>
-      </div>
-      {account.subscription.cancelAtPeriodEnd ? (
-        <p className="mt-3 text-xs leading-5 text-[#f5b84b]">Access remains active until the billing period ends.</p>
-      ) : null}
-      {account.admin ? (
-        <p className="mt-3 text-xs leading-5 text-[#a7a7a7]">Permanent debug access from the admin allowlist.</p>
-      ) : null}
-    </div>
-  );
-}
-
 export function TopAccountSettings({
   account,
   displayName,
@@ -412,16 +360,14 @@ export function TopAccountSettings({
   onSignOut: () => Promise<void>;
 }) {
   return (
-    <div className="rounded-lg bg-[#121212] p-2">
-      <AccountSettingsStrip
-        account={account}
-        className="rounded-lg bg-[#181818]/80"
-        displayName={displayName}
-        email={email}
-        onPortal={onPortal}
-        onSignOut={onSignOut}
-      />
-    </div>
+    <AccountSettingsStrip
+      account={account}
+      className="bg-[#181818]/85"
+      displayName={displayName}
+      email={email}
+      onPortal={onPortal}
+      onSignOut={onSignOut}
+    />
   );
 }
 

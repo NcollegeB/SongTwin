@@ -36,6 +36,7 @@ type SpotifyTrack = {
   duration_ms?: number;
   popularity?: number;
   is_local?: boolean;
+  preview_url?: string | null;
   external_urls?: { spotify?: string };
   artists?: SpotifyArtist[];
   album?: {
@@ -314,7 +315,7 @@ function playlistTracksPath(playlistId: string, withFields: boolean) {
   if (withFields) {
     params.set(
       "fields",
-      "items(item(id,name,duration_ms,popularity,is_local,external_urls,artists(id,name),album(name,images))),next",
+      "items(item(id,name,duration_ms,popularity,is_local,preview_url,external_urls,artists(id,name),album(name,images))),next",
     );
   }
 
@@ -401,6 +402,7 @@ export function simplifyTrack(track: SpotifyTrack): SimplifiedTrack {
     spotifyUrl: track.external_urls?.spotify,
     durationMs: track.duration_ms,
     popularity: track.popularity,
+    previewUrl: track.preview_url ?? undefined,
   };
 }
 
