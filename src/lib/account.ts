@@ -7,16 +7,38 @@ import type { AccountResponse, SubscriptionStatus } from "./types";
 import type { NextRequest } from "next/server";
 
 const ACTIVE_STATUSES = new Set<SubscriptionStatus>(["active", "trialing"]);
-const DEFAULT_ADMIN_CODE = "Nathan";
 
-function configuredAdminCode() {
-  return (process.env.SONGTWIN_ADMIN_CODE ?? DEFAULT_ADMIN_CODE).trim();
+function configuredAdminCodeHash() {
+  return process.env.SONGTWIN_ADMIN_CODE_HASH?.trim().toLowerCase();
 }
 
-function codesMatch(value: string, expected: string) {
-  const valueHash = createHash("sha256").update(value).digest();
-  const expectedHash = createHash("sha256").update(expected).digest();
-  return timingSafeEqual(valueHash, expectedHash);
+function configuredAdminCode() {
+  return process.env.SONGTWIN_ADMIN_CODE?.trim();
+}
+
+function sha256Hex(value: string) {
+  return createHash("sha256").update(value).digest("hex");
+}
+
+function safeEqual(value: string, expected: string) {
+  const valueBuffer = Buffer.from(value);
+  const expectedBuffer = Buffer.from(expected);
+
+  return valueBuffer.length === expectedBuffer.length && timingSafeEqual(valueBuffer, expectedBuffer);
+}
+
+function adminCodeMatches(code: string) {
+  const codeHash = configuredAdminCodeHash();
+  if (codeHash) {
+    return safeEqual(sha256Hex(code), codeHash);
+  }
+
+  const plainCode = configuredAdminCode();
+  if (plainCode) {
+    return safeEqual(sha256Hex(code), sha256Hex(plainCode));
+  }
+
+  throw new AccountAccessError("Admin code is not configured", 503);
 }
 
 export class AccountAccessError extends Error {
@@ -174,8 +196,7 @@ export async function redeemAdminCode(request: NextRequest, code: string): Promi
     throw new AccountAccessError("Firebase Admin is not configured", 503);
   }
 
-  const expectedCode = configuredAdminCode();
-  if (!expectedCode || !codesMatch(code.trim(), expectedCode)) {
+  if (!adminCodeMatches(code.trim())) {
     throw new AccountAccessError("Admin code is incorrect", 403);
   }
 
