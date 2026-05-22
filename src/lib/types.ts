@@ -36,7 +36,6 @@ export type SimplifiedTrack = {
   imageUrl?: string;
   spotifyUrl?: string;
   sourceUrl?: string;
-  previewUrl?: string;
   durationMs?: number;
   popularity?: number;
 };

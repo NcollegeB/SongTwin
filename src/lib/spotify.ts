@@ -6,7 +6,6 @@ import type {
   SpotifyProfile,
   SpotifyTokenSession,
 } from "./types";
-import { addPublicPreviewFallbacks } from "./previews";
 import { normalizeTrackText, similarArtistName } from "./track-utils";
 
 const SPOTIFY_API_BASE = "https://api.spotify.com/v1";
@@ -37,7 +36,6 @@ type SpotifyTrack = {
   duration_ms?: number;
   popularity?: number;
   is_local?: boolean;
-  preview_url?: string | null;
   external_urls?: { spotify?: string };
   artists?: SpotifyArtist[];
   album?: {
@@ -316,7 +314,7 @@ function playlistTracksPath(playlistId: string, withFields: boolean) {
   if (withFields) {
     params.set(
       "fields",
-      "items(item(id,name,duration_ms,popularity,is_local,preview_url,external_urls,artists(id,name),album(name,images))),next",
+      "items(item(id,name,duration_ms,popularity,is_local,external_urls,artists(id,name),album(name,images))),next",
     );
   }
 
@@ -336,7 +334,7 @@ export async function searchTracks(session: SpotifyTokenSession, query: string, 
     `/search?${params}`,
   );
 
-  return addPublicPreviewFallbacks(data.tracks.items.map(simplifyTrack));
+  return data.tracks.items.map(simplifyTrack);
 }
 
 export async function fetchSavedTracks(session: SpotifyTokenSession, limit = 300) {
@@ -403,7 +401,6 @@ export function simplifyTrack(track: SpotifyTrack): SimplifiedTrack {
     spotifyUrl: track.external_urls?.spotify,
     durationMs: track.duration_ms,
     popularity: track.popularity,
-    previewUrl: track.preview_url ?? undefined,
   };
 }
 

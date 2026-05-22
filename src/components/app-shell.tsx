@@ -11,19 +11,17 @@ import {
   Loader2,
   LogOut,
   Music2,
-  Pause,
   Play,
   PlugZap,
   Plus,
   Search,
   Shuffle,
   Sparkles,
-  Volume2,
   Waves,
   X,
 } from "lucide-react";
 import type { FormEvent, ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
   ApiSessionResponse,
   PlaylistSummary,
@@ -36,10 +34,6 @@ type SourceMode = "playlist" | "song";
 type AppShellProps = {
   accountSettings?: ReactNode;
   getAccountToken?: () => Promise<string | null>;
-};
-type PreviewControls = {
-  activePreviewKey: string | null;
-  onTogglePreview: (track: SimplifiedTrack) => void;
 };
 
 const initialSummary: RecommendationResponse["sourceSummary"] = {
@@ -113,9 +107,6 @@ export function AppShell({ accountSettings, getAccountToken }: AppShellProps = {
   const [searching, setSearching] = useState(false);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [playingPreviewKey, setPlayingPreviewKey] = useState<string | null>(null);
-  const previewAudioRef = useRef<HTMLAudioElement | null>(null);
-  const previewTimeoutRef = useRef<number | null>(null);
 
   const connected = Boolean(session?.connected);
   const selectedPlaylist = playlists.find((playlist) => playlist.id === selectedPlaylistId);
@@ -189,65 +180,6 @@ export function AppShell({ accountSettings, getAccountToken }: AppShellProps = {
 
     return payload as T;
   }, [getAccountToken]);
-
-  const stopPreview = useCallback(function stopPreview() {
-    if (previewTimeoutRef.current) {
-      window.clearTimeout(previewTimeoutRef.current);
-      previewTimeoutRef.current = null;
-    }
-
-    const audio = previewAudioRef.current;
-    if (audio) {
-      audio.pause();
-      audio.currentTime = 0;
-      previewAudioRef.current = null;
-    }
-
-    setPlayingPreviewKey(null);
-  }, []);
-
-  const togglePreview = useCallback(async function togglePreview(track: SimplifiedTrack) {
-    if (!track.previewUrl) {
-      return;
-    }
-
-    const key = songSeedKey(track);
-    if (playingPreviewKey === key) {
-      stopPreview();
-      return;
-    }
-
-    stopPreview();
-
-    const audio = new Audio(track.previewUrl);
-    const stopThisPreview = () => {
-      if (previewAudioRef.current === audio) {
-        stopPreview();
-      }
-    };
-
-    previewAudioRef.current = audio;
-    setPlayingPreviewKey(key);
-    audio.addEventListener("ended", stopThisPreview, { once: true });
-    previewTimeoutRef.current = window.setTimeout(stopThisPreview, 10000);
-
-    try {
-      await audio.play();
-      setError(null);
-    } catch {
-      stopThisPreview();
-      setError("Preview could not be played in this browser. Open the song in Spotify or YouTube instead.");
-    }
-  }, [playingPreviewKey, stopPreview]);
-
-  const previewControls = {
-    activePreviewKey: playingPreviewKey,
-    onTogglePreview: togglePreview,
-  };
-
-  useEffect(() => {
-    return () => stopPreview();
-  }, [stopPreview]);
 
   useEffect(() => {
     const oauthError = new URLSearchParams(window.location.search).get("error");
@@ -651,7 +583,6 @@ export function AppShell({ accountSettings, getAccountToken }: AppShellProps = {
                   searching={searching}
                   sourceTracks={sourceTracks}
                   tracks={connected ? searchResults : []}
-                  {...previewControls}
                   onAdd={addSourceTrack}
                 />
               </div>
@@ -733,7 +664,6 @@ export function AppShell({ accountSettings, getAccountToken }: AppShellProps = {
                     <OpenTrackActions
                       key={`${sourceTracks[0].id ?? sourceTracks[0].spotifyUrl ?? sourceTracks[0].name}-${sourceTracks[0].artistName}`}
                       labeled
-                      {...previewControls}
                       track={sourceTracks[0]}
                     />
                   ) : null}
@@ -766,7 +696,7 @@ export function AppShell({ accountSettings, getAccountToken }: AppShellProps = {
                 <LoadingPanel />
               ) : recommendations.length > 0 ? (
                 <div className="overflow-hidden rounded-lg border border-[#242424]">
-                  <div className="grid grid-cols-[44px_minmax(0,1.45fr)_minmax(0,1fr)_172px] gap-3 border-b border-[#242424] bg-black/20 px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-[#a7a7a7] max-md:hidden">
+                  <div className="grid grid-cols-[44px_minmax(0,1.6fr)_minmax(0,1fr)_132px] gap-3 border-b border-[#242424] bg-black/20 px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-[#a7a7a7] max-md:hidden">
                     <span>#</span>
                     <span>Title</span>
                     <span>Signal</span>
@@ -777,7 +707,6 @@ export function AppShell({ accountSettings, getAccountToken }: AppShellProps = {
                       <RecommendationRow
                         key={`${track.rank}-${track.name}`}
                         track={track}
-                        {...previewControls}
                       />
                     ))}
                   </div>
@@ -980,9 +909,7 @@ function ConnectLibraryPrompt() {
 }
 
 function SearchResults({
-  activePreviewKey,
   connected,
-  onTogglePreview,
   query,
   searching,
   sourceTracks,
@@ -995,7 +922,7 @@ function SearchResults({
   sourceTracks: SimplifiedTrack[];
   tracks: SimplifiedTrack[];
   onAdd: (track: SimplifiedTrack) => void;
-} & PreviewControls) {
+}) {
   const trimmedQuery = query.trim();
   const sourceTrackKeys = new Set(sourceTracks.map(songSeedKey));
 
@@ -1032,12 +959,10 @@ function SearchResults({
 
           {tracks.map((track) => (
             <SearchResultRow
-              activePreviewKey={activePreviewKey}
               added={sourceTrackKeys.has(songSeedKey(track))}
               key={`${track.id}-${track.name}`}
               track={track}
               onAdd={onAdd}
-              onTogglePreview={onTogglePreview}
             />
           ))}
         </div>
@@ -1112,16 +1037,14 @@ function SourceSongsPanel({
 }
 
 function SearchResultRow({
-  activePreviewKey,
   added,
-  onTogglePreview,
   track,
   onAdd,
 }: {
   added: boolean;
   track: SimplifiedTrack;
   onAdd: (track: SimplifiedTrack) => void;
-} & PreviewControls) {
+}) {
   return (
     <article
       className={[
@@ -1157,10 +1080,8 @@ function SearchResultRow({
           {added ? "Added" : "Add"}
         </button>
         <OpenTrackActions
-          activePreviewKey={activePreviewKey}
           selected={added}
           track={track}
-          onTogglePreview={onTogglePreview}
         />
       </div>
     </article>
@@ -1168,12 +1089,10 @@ function SearchResultRow({
 }
 
 function RecommendationRow({
-  activePreviewKey,
-  onTogglePreview,
   track,
-}: { track: Recommendation } & PreviewControls) {
+}: { track: Recommendation }) {
   return (
-    <article className="grid gap-3 bg-[#121212] px-3 py-3 transition hover:bg-[#1f1f1f] md:grid-cols-[44px_minmax(0,1.45fr)_minmax(0,1fr)_172px] md:items-center">
+    <article className="grid gap-3 bg-[#121212] px-3 py-3 transition hover:bg-[#1f1f1f] md:grid-cols-[44px_minmax(0,1.6fr)_minmax(0,1fr)_132px] md:items-center">
       <div className="hidden text-sm text-[#a7a7a7] md:block">{track.rank}</div>
 
       <div className="flex min-w-0 items-center gap-3">
@@ -1202,51 +1121,22 @@ function RecommendationRow({
           />
         </div>
         <span className="w-8 text-right text-sm font-bold text-white">{track.score}</span>
-        <OpenTrackActions
-          activePreviewKey={activePreviewKey}
-          track={track}
-          onTogglePreview={onTogglePreview}
-        />
+        <OpenTrackActions track={track} />
       </div>
     </article>
   );
 }
 
 function OpenTrackActions({
-  activePreviewKey,
   labeled = false,
-  onTogglePreview,
   selected = false,
   track,
 }: {
   labeled?: boolean;
   selected?: boolean;
   track: SimplifiedTrack;
-} & PreviewControls) {
+}) {
   const spotifyUrl = spotifyTrackUrl(track);
-  const previewActive = activePreviewKey === songSeedKey(track);
-  const hasPreview = Boolean(track.previewUrl);
-  const previewClass = labeled
-    ? [
-        "inline-flex h-10 items-center justify-center gap-2 rounded-full px-4 text-xs font-black transition hover:scale-[1.02]",
-        hasPreview
-          ? previewActive
-            ? "bg-white text-black"
-            : "bg-[#242424] text-white hover:bg-[#333]"
-          : "cursor-not-allowed bg-[#1a1a1a] text-[#737373]",
-      ].join(" ")
-    : [
-        "inline-flex h-8 w-8 items-center justify-center rounded-full transition",
-        hasPreview
-          ? selected
-            ? "bg-black/15 text-black hover:bg-black/25"
-            : previewActive
-              ? "bg-white text-black"
-              : "bg-[#242424] text-white hover:bg-[#333]"
-          : selected
-            ? "cursor-not-allowed bg-black/10 text-black/35"
-            : "cursor-not-allowed bg-[#1a1a1a] text-[#737373]",
-      ].join(" ");
   const spotifyClass = labeled
     ? "inline-flex h-10 items-center justify-center gap-2 rounded-full bg-[#1ed760] px-4 text-xs font-black text-black transition hover:scale-[1.02] hover:bg-[#3be477]"
     : [
@@ -1262,24 +1152,6 @@ function OpenTrackActions({
 
   return (
     <div className="flex shrink-0 items-center gap-1.5">
-      <button
-        className={previewClass}
-        disabled={!hasPreview}
-        onClick={() => onTogglePreview(track)}
-        title={
-          hasPreview
-            ? previewActive
-              ? "Stop preview"
-              : "Play 10-second preview"
-            : "Spotify did not provide a preview for this song"
-        }
-        type="button"
-      >
-        {previewActive ? <Pause size={15} aria-hidden="true" /> : <Volume2 size={15} aria-hidden="true" />}
-        <span className={labeled ? "" : "sr-only"}>
-          {hasPreview ? (previewActive ? "Stop preview" : "Preview") : "No preview"}
-        </span>
-      </button>
       {spotifyUrl ? (
         <a className={spotifyClass} href={spotifyUrl} rel="noreferrer" target="_blank">
           <SpotifyIcon size={15} />

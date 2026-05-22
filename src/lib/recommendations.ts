@@ -1,7 +1,6 @@
 import { searchBestTrack } from "./spotify";
 import { expandedGraphConfigured, getSimilarTracks } from "./lastfm";
 import { findMusicBrainzRecordingMbid, getListenBrainzSimilarTracks } from "./listenbrainz";
-import { addPublicPreviewFallbacks } from "./previews";
 import { primaryArtist, samePrimaryArtist, trackKey } from "./track-utils";
 import type { RecommendationResponse, SimplifiedTrack, SpotifyTokenSession } from "./types";
 
@@ -259,7 +258,7 @@ async function buildRecommendations(
     }),
   );
 
-  const recommendations = mapped
+  return mapped
     .map(({ bucket, spotifyTrack }) => {
       const normalizedScore = Math.round((bucket.score / maxScore) * 100);
       const support = Math.max(bucket.supportSeeds.size, 1);
@@ -289,8 +288,6 @@ async function buildRecommendations(
     .filter((track) => !isSamePrimaryArtistAsAnySeed(track, seeds))
     .slice(0, limit)
     .map((track, index) => ({ ...track, rank: index + 1 }));
-
-  return addPublicPreviewFallbacks(recommendations);
 }
 
 function dedupeTracks(tracks: SimplifiedTrack[]) {
