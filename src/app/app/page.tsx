@@ -6,12 +6,13 @@ import { AppShell } from "@/components/app-shell";
 export default function SongTwinAppPage() {
   return (
     <AuthGate>
-      {({ account, getIdToken, openBillingPortal, signOut }) => (
+      {({ account, getIdToken, openBillingPortal, signOut, user }) => (
         <AppShell
           accountControls={
             <AccountControls
               account={account}
-              email={account.email}
+              displayName={user.displayName}
+              email={user.email ?? account.email}
               onPortal={openBillingPortal}
               onSignOut={signOut}
             />
@@ -19,7 +20,8 @@ export default function SongTwinAppPage() {
           accountSettings={
             <TopAccountSettings
               account={account}
-              email={account.email}
+              displayName={user.displayName}
+              email={user.email ?? account.email}
               onPortal={openBillingPortal}
               onSignOut={signOut}
             />

@@ -1,17 +1,19 @@
 "use client";
 
-import { ArrowRight, CreditCard, Loader2, LogOut, Settings, ShieldCheck } from "lucide-react";
+import { ArrowRight, CreditCard, Loader2, LogOut, Settings, ShieldCheck, UserRound } from "lucide-react";
 import Link from "next/link";
 import type { AccountResponse } from "@/lib/types";
 
 type AccountSettingsStripProps = {
   account?: AccountResponse | null;
   className?: string;
+  displayName?: string | null;
   email?: string | null;
   loading?: boolean;
   onCheckout?: () => Promise<void>;
   onPortal?: () => Promise<void>;
   onSignOut: () => Promise<void>;
+  showAccountLink?: boolean;
   showOpenApp?: boolean;
   submitting?: boolean;
 };
@@ -43,11 +45,13 @@ function accessLabel(account?: AccountResponse | null) {
 export function AccountSettingsStrip({
   account,
   className,
+  displayName,
   email,
   loading = false,
   onCheckout,
   onPortal,
   onSignOut,
+  showAccountLink = true,
   showOpenApp = false,
   submitting = false,
 }: AccountSettingsStripProps) {
@@ -60,6 +64,7 @@ export function AccountSettingsStrip({
       onCheckout,
   );
   const busy = loading || submitting;
+  const identityLabel = displayName?.trim() || email || "Signed in";
 
   return (
     <div
@@ -74,7 +79,7 @@ export function AccountSettingsStrip({
         ) : (
           <Settings className="shrink-0 text-[#1ed760]" size={15} aria-hidden="true" />
         )}
-        <span className="max-w-[190px] truncate">{email ?? "Signed in"}</span>
+        <span className="max-w-[190px] truncate">{identityLabel}</span>
       </div>
 
       <div className="hidden items-center gap-1 rounded-full bg-[#12351f] px-3 py-2 text-xs font-black text-[#7dffad] sm:inline-flex">
@@ -87,6 +92,13 @@ export function AccountSettingsStrip({
           <span className="sm:hidden">Open</span>
           <span className="hidden sm:inline">Open SongTwin</span>
           <ArrowRight size={15} aria-hidden="true" />
+        </Link>
+      ) : null}
+
+      {showAccountLink ? (
+        <Link className="connect-button secondary !min-h-9 !px-3 !text-xs" href="/account">
+          <UserRound size={14} aria-hidden="true" />
+          <span className="hidden sm:inline">Account</span>
         </Link>
       ) : null}
 

@@ -113,6 +113,7 @@ export function LandingAccountNav() {
     return (
       <AccountSettingsStrip
         account={account}
+        displayName={user.displayName}
         email={user.email}
         loading={accountLoading}
         onCheckout={startCheckout}

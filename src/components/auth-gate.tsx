@@ -26,13 +26,19 @@ import type { AccountResponse } from "@/lib/types";
 
 type AuthGateContext = {
   account: AccountResponse;
+  accountLoading: boolean;
   getIdToken: () => Promise<string | null>;
   openBillingPortal: () => Promise<void>;
+  refreshAccount: () => Promise<AccountResponse | null>;
   signOut: () => Promise<void>;
+  startCheckout: () => Promise<void>;
+  submitting: boolean;
+  user: User;
 };
 
 type AuthGateProps = {
   children: (context: AuthGateContext) => ReactNode;
+  requireSubscription?: boolean;
 };
 
 const inactiveAccount: AccountResponse = {
@@ -41,7 +47,7 @@ const inactiveAccount: AccountResponse = {
   subscription: { active: false, status: "inactive" },
 };
 
-export function AuthGate({ children }: AuthGateProps) {
+export function AuthGate({ children, requireSubscription = true }: AuthGateProps) {
   const configured = firebaseClientConfigured();
   const auth = useMemo(() => (configured ? getFirebaseClientAuth() : null), [configured]);
   const [mode, setMode] = useState<"signin" | "signup">("signup");
@@ -225,6 +231,14 @@ export function AuthGate({ children }: AuthGateProps) {
     }
   }
 
+  async function refreshAccount() {
+    if (!user) {
+      return null;
+    }
+
+    return loadAccount(user, true);
+  }
+
   if (!firebaseClientConfigured() || !auth) {
     return <SetupRequired reason="Firebase client environment variables are missing." />;
   }
@@ -288,7 +302,7 @@ export function AuthGate({ children }: AuthGateProps) {
     return <SetupRequired reason="Firebase Admin credentials are missing on the server." />;
   }
 
-  if (!account.subscription.active) {
+  if (requireSubscription && !account.subscription.active) {
     return (
       <SubscribeScreen
         account={account}
@@ -305,31 +319,44 @@ export function AuthGate({ children }: AuthGateProps) {
 
   return children({
     account,
+    accountLoading: loading,
     getIdToken: () => user.getIdToken(),
     openBillingPortal,
+    refreshAccount,
     signOut,
+    startCheckout,
+    submitting,
+    user,
   });
 }
 
 export function AccountControls({
   account,
+  displayName,
   email,
   onPortal,
   onSignOut,
 }: {
   account: AccountResponse;
+  displayName?: string | null;
   email?: string | null;
   onPortal: () => Promise<void>;
   onSignOut: () => Promise<void>;
 }) {
+  const identityLabel = displayName?.trim() || email || (account.admin ? "Admin account" : "Paid account");
+
   return (
     <div className="rounded-lg border border-[#242424] bg-[#181818] p-3">
       <div className="flex items-center gap-2 text-xs font-bold text-[#1db954]">
         <CheckCircle2 size={15} aria-hidden="true" />
         {account.admin ? "SongTwin Admin" : "SongTwin Pro"}
       </div>
-      <p className="mt-1 truncate text-xs text-[#a7a7a7]">{email ?? (account.admin ? "Admin account" : "Paid account")}</p>
+      <p className="mt-1 truncate text-xs text-[#a7a7a7]">{identityLabel}</p>
       <div className="mt-3 grid grid-cols-2 gap-2">
+        <Link className="connect-button secondary !min-h-9 !px-3 !text-xs" href="/account">
+          <ShieldCheck size={14} aria-hidden="true" />
+          Account
+        </Link>
         <button
           className="connect-button secondary !min-h-9 !px-3 !text-xs"
           disabled={account.admin}
@@ -339,7 +366,7 @@ export function AccountControls({
           <CreditCard size={14} aria-hidden="true" />
           Billing
         </button>
-        <button className="connect-button secondary !min-h-9 !px-3 !text-xs" onClick={onSignOut} type="button">
+        <button className="connect-button secondary col-span-2 !min-h-9 !px-3 !text-xs" onClick={onSignOut} type="button">
           <LogOut size={14} aria-hidden="true" />
           Sign out
         </button>
@@ -356,11 +383,13 @@ export function AccountControls({
 
 export function TopAccountSettings({
   account,
+  displayName,
   email,
   onPortal,
   onSignOut,
 }: {
   account: AccountResponse;
+  displayName?: string | null;
   email?: string | null;
   onPortal: () => Promise<void>;
   onSignOut: () => Promise<void>;
@@ -370,6 +399,7 @@ export function TopAccountSettings({
       <AccountSettingsStrip
         account={account}
         className="rounded-lg bg-[#181818]/80"
+        displayName={displayName}
         email={email}
         onPortal={onPortal}
         onSignOut={onSignOut}
@@ -419,6 +449,7 @@ function SubscribeScreen({
           <AccountSettingsStrip
             account={account}
             className="lg:justify-end"
+            displayName={email}
             email={email}
             onCheckout={onCheckout}
             onPortal={onPortal}
