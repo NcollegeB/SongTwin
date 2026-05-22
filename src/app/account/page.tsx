@@ -11,6 +11,7 @@ export default function AccountPage() {
         accountLoading,
         openBillingPortal,
         refreshAccount,
+        redeemAdminCode,
         signOut,
         startCheckout,
         submitting,
@@ -22,6 +23,7 @@ export default function AccountPage() {
           onCheckout={startCheckout}
           onPortal={openBillingPortal}
           onRefreshAccount={refreshAccount}
+          onRedeemAdminCode={redeemAdminCode}
           onSignOut={signOut}
           submitting={submitting}
           user={user}

@@ -30,6 +30,7 @@ type AuthGateContext = {
   getIdToken: () => Promise<string | null>;
   openBillingPortal: () => Promise<void>;
   refreshAccount: () => Promise<AccountResponse | null>;
+  redeemAdminCode: (code: string) => Promise<AccountResponse | null>;
   signOut: () => Promise<void>;
   startCheckout: () => Promise<void>;
   submitting: boolean;
@@ -239,6 +240,21 @@ export function AuthGate({ children, requireSubscription = true }: AuthGateProps
     return loadAccount(user, true);
   }
 
+  async function redeemAdminCode(code: string) {
+    if (!user) {
+      return null;
+    }
+
+    const payload = await accountRequest<AccountResponse>("/api/account/admin-code", user, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code }),
+    });
+    setAccount(payload);
+    await user.getIdToken(true);
+    return payload;
+  }
+
   if (!firebaseClientConfigured() || !auth) {
     return <SetupRequired reason="Firebase client environment variables are missing." />;
   }
@@ -323,6 +339,7 @@ export function AuthGate({ children, requireSubscription = true }: AuthGateProps
     getIdToken: () => user.getIdToken(),
     openBillingPortal,
     refreshAccount,
+    redeemAdminCode,
     signOut,
     startCheckout,
     submitting,

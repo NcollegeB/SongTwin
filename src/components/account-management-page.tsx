@@ -33,12 +33,13 @@ type AccountManagementPageProps = {
   onCheckout: () => Promise<void>;
   onPortal: () => Promise<void>;
   onRefreshAccount: () => Promise<AccountResponse | null>;
+  onRedeemAdminCode: (code: string) => Promise<AccountResponse | null>;
   onSignOut: () => Promise<void>;
   submitting: boolean;
   user: User;
 };
 
-type ActionKey = "profile" | "email" | "password" | "reset";
+type ActionKey = "profile" | "email" | "password" | "reset" | "adminCode";
 
 export function AccountManagementPage({
   account,
@@ -46,6 +47,7 @@ export function AccountManagementPage({
   onCheckout,
   onPortal,
   onRefreshAccount,
+  onRedeemAdminCode,
   onSignOut,
   submitting,
   user,
@@ -56,6 +58,7 @@ export function AccountManagementPage({
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [adminCode, setAdminCode] = useState("");
   const [activeAction, setActiveAction] = useState<ActionKey | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -170,6 +173,29 @@ export function AccountManagementPage({
     try {
       await sendPasswordResetEmail(auth, user.email);
       setMessage("Password reset email sent.");
+    } catch (caught) {
+      setError(accountErrorMessage(caught));
+    } finally {
+      setActiveAction(null);
+    }
+  }
+
+  async function redeemAdminAccess(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!adminCode.trim()) {
+      setError("Enter an admin code.");
+      return;
+    }
+
+    setActiveAction("adminCode");
+    setError(null);
+    setMessage(null);
+
+    try {
+      const payload = await onRedeemAdminCode(adminCode);
+      setAdminCode("");
+      setMessage(payload?.admin ? "Admin access unlocked." : "Admin code accepted.");
     } catch (caught) {
       setError(accountErrorMessage(caught));
     } finally {
@@ -352,6 +378,40 @@ export function AccountManagementPage({
           </section>
 
           <aside className="grid content-start gap-4">
+            <SettingsPanel
+              icon={<ShieldCheck size={19} aria-hidden="true" />}
+              title="Admin Code"
+            >
+              {account.admin ? (
+                <p className="rounded-lg bg-[#102719] p-3 text-sm font-semibold text-[#b7f7cb]">
+                  Admin access is active.
+                </p>
+              ) : (
+                <form className="grid gap-3" onSubmit={redeemAdminAccess}>
+                  <label className="grid gap-2 text-sm font-semibold text-[#d8d8d8]">
+                    Access code
+                    <input
+                      className="h-12 rounded-lg border border-[#333] bg-[#181818] px-3 text-white outline-none focus:border-[#1db954]"
+                      autoComplete="off"
+                      disabled={busy}
+                      onChange={(event) => setAdminCode(event.target.value)}
+                      required
+                      type="password"
+                      value={adminCode}
+                    />
+                  </label>
+                  <button className="connect-button min-h-11 w-full" disabled={busy} type="submit">
+                    {activeAction === "adminCode" ? (
+                      <Loader2 className="animate-spin" size={17} />
+                    ) : (
+                      <ShieldCheck size={17} />
+                    )}
+                    Unlock access
+                  </button>
+                </form>
+              )}
+            </SettingsPanel>
+
             <SettingsPanel
               icon={<CreditCard size={19} aria-hidden="true" />}
               title="Billing"

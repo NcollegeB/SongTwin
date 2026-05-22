@@ -1,3 +1,4 @@
+import { createHash, timingSafeEqual } from "node:crypto";
 import { FieldValue, type DocumentData } from "firebase-admin/firestore";
 import type Stripe from "stripe";
 import { adminAuth, adminDb, firebaseAdminConfigured } from "./firebase-admin";
@@ -6,18 +7,16 @@ import type { AccountResponse, SubscriptionStatus } from "./types";
 import type { NextRequest } from "next/server";
 
 const ACTIVE_STATUSES = new Set<SubscriptionStatus>(["active", "trialing"]);
+const DEFAULT_ADMIN_CODE = "Nathan";
 
-function configuredAdminEmails() {
-  return new Set(
-    (process.env.SONGTWIN_ADMIN_EMAILS ?? "")
-      .split(",")
-      .map((email) => email.trim().toLowerCase())
-      .filter(Boolean),
-  );
+function configuredAdminCode() {
+  return (process.env.SONGTWIN_ADMIN_CODE ?? DEFAULT_ADMIN_CODE).trim();
 }
 
-function emailIsAdmin(email?: string | null) {
-  return Boolean(email && configuredAdminEmails().has(email.toLowerCase()));
+function codesMatch(value: string, expected: string) {
+  const valueHash = createHash("sha256").update(value).digest();
+  const expectedHash = createHash("sha256").update(expected).digest();
+  return timingSafeEqual(valueHash, expectedHash);
 }
 
 export class AccountAccessError extends Error {
@@ -85,8 +84,29 @@ function fromDoc(uid: string, data?: DocumentData): VerifiedAccount {
   };
 }
 
-function accountIsAdmin(account: VerifiedAccount, email?: string | null) {
-  return Boolean(account.admin || emailIsAdmin(email ?? account.email));
+function accountIsAdmin(account: VerifiedAccount) {
+  return Boolean(account.admin);
+}
+
+function accountResponseFromVerifiedAccount(account: VerifiedAccount): AccountResponse {
+  const admin = accountIsAdmin(account);
+  const subscriptionStatus = admin ? "active" : account.subscriptionStatus;
+
+  return {
+    configured: true,
+    stripeConfigured: stripeConfigured(),
+    admin,
+    uid: account.uid,
+    email: account.email,
+    subscription: {
+      active: subscriptionIsActive(subscriptionStatus),
+      status: subscriptionStatus,
+      currentPeriodEnd: account.currentPeriodEnd,
+      cancelAtPeriodEnd: account.cancelAtPeriodEnd,
+      stripeCustomerId: account.stripeCustomerId,
+      stripeSubscriptionId: account.stripeSubscriptionId,
+    },
+  };
 }
 
 export async function verifyAccountToken(request: NextRequest) {
@@ -135,35 +155,53 @@ export async function getAccountResponse(request: NextRequest): Promise<AccountR
 
   const decoded = await verifyAccountToken(request);
   const account = await ensureAccount(decoded.uid, decoded.email);
-  const admin = accountIsAdmin(account, decoded.email);
-  const subscriptionStatus = admin ? "active" : account.subscriptionStatus;
-
-  return {
-    configured: true,
-    stripeConfigured: stripeConfigured(),
-    admin,
-    uid: account.uid,
-    email: account.email,
-    subscription: {
-      active: subscriptionIsActive(subscriptionStatus),
-      status: subscriptionStatus,
-      currentPeriodEnd: account.currentPeriodEnd,
-      cancelAtPeriodEnd: account.cancelAtPeriodEnd,
-      stripeCustomerId: account.stripeCustomerId,
-      stripeSubscriptionId: account.stripeSubscriptionId,
-    },
-  };
+  return accountResponseFromVerifiedAccount(account);
 }
 
 export async function requireActiveAccount(request: NextRequest) {
   const decoded = await verifyAccountToken(request);
   const account = await ensureAccount(decoded.uid, decoded.email);
 
-  if (!accountIsAdmin(account, decoded.email) && !subscriptionIsActive(account.subscriptionStatus)) {
+  if (!accountIsAdmin(account) && !subscriptionIsActive(account.subscriptionStatus)) {
     throw new AccountAccessError("An active SongTwin subscription is required", 402);
   }
 
   return { decoded, account };
+}
+
+export async function redeemAdminCode(request: NextRequest, code: string): Promise<AccountResponse> {
+  if (!firebaseAdminConfigured()) {
+    throw new AccountAccessError("Firebase Admin is not configured", 503);
+  }
+
+  const expectedCode = configuredAdminCode();
+  if (!expectedCode || !codesMatch(code.trim(), expectedCode)) {
+    throw new AccountAccessError("Admin code is incorrect", 403);
+  }
+
+  const decoded = await verifyAccountToken(request);
+  const ref = adminDb().collection("users").doc(decoded.uid);
+  await ensureAccount(decoded.uid, decoded.email);
+  await ref.set(
+    {
+      admin: true,
+      adminCodeRedeemedAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    },
+    { merge: true },
+  );
+
+  const user = await adminAuth().getUser(decoded.uid);
+  await adminAuth().setCustomUserClaims(decoded.uid, {
+    ...(user.customClaims ?? {}),
+    songTwinAdmin: true,
+    songTwinSubscriber: true,
+  });
+
+  const snapshot = await ref.get();
+  return accountResponseFromVerifiedAccount(
+    fromDoc(decoded.uid, { ...snapshot.data(), email: decoded.email ?? snapshot.data()?.email }),
+  );
 }
 
 export async function saveStripeCustomer(uid: string, stripeCustomerId: string) {
