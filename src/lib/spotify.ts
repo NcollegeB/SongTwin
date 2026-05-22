@@ -6,6 +6,7 @@ import type {
   SpotifyProfile,
   SpotifyTokenSession,
 } from "./types";
+import { addPublicPreviewFallbacks } from "./previews";
 import { normalizeTrackText, similarArtistName } from "./track-utils";
 
 const SPOTIFY_API_BASE = "https://api.spotify.com/v1";
@@ -335,7 +336,7 @@ export async function searchTracks(session: SpotifyTokenSession, query: string, 
     `/search?${params}`,
   );
 
-  return data.tracks.items.map(simplifyTrack);
+  return addPublicPreviewFallbacks(data.tracks.items.map(simplifyTrack));
 }
 
 export async function fetchSavedTracks(session: SpotifyTokenSession, limit = 300) {
