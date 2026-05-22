@@ -1,5 +1,5 @@
 import { searchBestTrack } from "./spotify";
-import { getSimilarTracks, lastFmConfigured } from "./lastfm";
+import { expandedGraphConfigured, getSimilarTracks } from "./lastfm";
 import { findMusicBrainzRecordingMbid, getListenBrainzSimilarTracks } from "./listenbrainz";
 import { primaryArtist, samePrimaryArtist, trackKey } from "./track-utils";
 import type { RecommendationResponse, SimplifiedTrack, SpotifyTokenSession } from "./types";
@@ -13,10 +13,10 @@ type CandidateBucket = {
   imageUrl?: string;
 };
 
-type CollaborativeSignal = "lastfm-co-listening" | "listenbrainz-collaborative";
+type RecommendationSignal = "expanded-graph" | "standard-graph";
 
 type RecommendationBuildOptions = {
-  signal: CollaborativeSignal;
+  signal: RecommendationSignal;
   reason: string;
   maxConfidence: number;
   confidenceWeight: number;
@@ -43,8 +43,8 @@ export async function recommendFromSeeds(
     return {
       recommendations: [],
       sourceSummary: {
-        provider: "lastfm",
-        lastFmConfigured: lastFmConfigured(),
+        provider: "expanded",
+        expandedGraphConfigured: expandedGraphConfigured(),
         seedsAnalyzed: 0,
         spotifyMatches: 0,
         notes: ["No seed tracks were supplied."],
@@ -52,30 +52,28 @@ export async function recommendFromSeeds(
     };
   }
 
-  if (!lastFmConfigured()) {
+  if (!expandedGraphConfigured()) {
     const listenBrainz = await listenBrainzRecommendations(session, seeds, limit);
     if (listenBrainz.length > 0) {
       return {
         recommendations: listenBrainz,
         sourceSummary: {
-          provider: "listenbrainz",
-          lastFmConfigured: false,
+          provider: "standard",
+          expandedGraphConfigured: false,
           seedsAnalyzed: Math.min(seeds.length, MAX_LISTENBRAINZ_SEEDS),
           spotifyMatches: listenBrainz.filter((track) => track.matchedOnSpotify).length,
-          notes: [
-            "Using ListenBrainz collaborative listening because LASTFM_API_KEY is not configured.",
-          ],
+          notes: ["Using SongTwin's standard public music graph for this run."],
         },
       };
     }
 
-    return noCollaborativeMatches({
-      provider: "listenbrainz",
-      lastFmConfigured: false,
+    return noStrongMatches({
+      provider: "standard",
+      expandedGraphConfigured: false,
       seedsAnalyzed: Math.min(seeds.length, MAX_LISTENBRAINZ_SEEDS),
       notes: [
-        "ListenBrainz returned no cross-artist co-listening matches for the analyzed seeds.",
-        "Add LASTFM_API_KEY for a larger listener-overlap graph.",
+        "SongTwin did not find strong cross-artist matches for the analyzed seeds.",
+        "Try more source songs or a broader playlist to give the algorithm more signal.",
       ],
     });
   }
@@ -117,7 +115,7 @@ export async function recommendFromSeeds(
 
   const failures = settled.filter((result) => result.status === "rejected").length;
   if (failures > 0) {
-    notes.push(`${failures} Last.fm seed lookups failed and were skipped.`);
+    notes.push(`${failures} source lookups failed and were skipped.`);
   }
 
   if (bucketMap.size === 0) {
@@ -126,29 +124,31 @@ export async function recommendFromSeeds(
       return {
         recommendations: listenBrainz,
         sourceSummary: {
-          provider: "listenbrainz",
-          lastFmConfigured: true,
+          provider: "standard",
+          expandedGraphConfigured: true,
           seedsAnalyzed: Math.min(seeds.length, MAX_LISTENBRAINZ_SEEDS),
           spotifyMatches: listenBrainz.filter((track) => track.matchedOnSpotify).length,
-          notes: ["Last.fm returned no cross-artist candidates, so ListenBrainz was used."],
+          notes: [
+            "SongTwin used its public music graph after the expanded graph returned no strong cross-artist candidates.",
+          ],
         },
       };
     }
 
-    return noCollaborativeMatches({
-      provider: "lastfm",
-      lastFmConfigured: true,
+    return noStrongMatches({
+      provider: "expanded",
+      expandedGraphConfigured: true,
       seedsAnalyzed: seeds.length,
       notes: [
-        "Last.fm and ListenBrainz returned no cross-artist co-listening matches for the analyzed seeds.",
-        "SongTwin is not showing same-artist catalog filler because it is not listener-overlap data.",
+        "SongTwin did not find strong cross-artist matches for the analyzed seeds.",
+        "SongTwin is not showing same-artist catalog filler because it is not a strong fit signal.",
       ],
     });
   }
 
   const recommendations = await buildRecommendations(session, bucketMap, seeds, limit, {
-    signal: "lastfm-co-listening",
-    reason: "Last.fm listener-overlap candidate mapped back to Spotify catalog.",
+    signal: "expanded-graph",
+    reason: "Expanded music graph candidate mapped back to Spotify catalog.",
     maxConfidence: 97,
     confidenceWeight: 0.82,
     supportWeight: 6,
@@ -157,8 +157,8 @@ export async function recommendFromSeeds(
   return {
     recommendations,
     sourceSummary: {
-      provider: "lastfm",
-      lastFmConfigured: true,
+      provider: "expanded",
+      expandedGraphConfigured: true,
       seedsAnalyzed: seeds.length,
       spotifyMatches: recommendations.filter((track) => track.matchedOnSpotify).length,
       notes,
@@ -224,8 +224,8 @@ async function listenBrainzRecommendations(
   }
 
   return buildRecommendations(session, bucketMap, seeds, limit, {
-    signal: "listenbrainz-collaborative",
-    reason: "ListenBrainz collaborative listening candidate mapped back to Spotify catalog.",
+    signal: "standard-graph",
+    reason: "Public music graph candidate mapped back to Spotify catalog.",
     maxConfidence: 95,
     confidenceWeight: 0.78,
     supportWeight: 8,
@@ -266,12 +266,12 @@ async function buildRecommendations(
         name: bucket.name,
         artistName: bucket.artistName,
         imageUrl: bucket.imageUrl,
-        lastFmUrl: bucket.sourceUrl,
+        sourceUrl: bucket.sourceUrl,
       };
 
       return {
         ...track,
-        lastFmUrl: bucket.sourceUrl,
+        sourceUrl: bucket.sourceUrl,
         score: normalizedScore,
         confidence: Math.min(
           options.maxConfidence,
@@ -313,9 +313,9 @@ function isSamePrimaryArtistAsAnySeed(
   return seeds.some((seed) => samePrimaryArtist(track.artistName, seed.artistName));
 }
 
-function noCollaborativeMatches(values: {
+function noStrongMatches(values: {
   provider: RecommendationResponse["sourceSummary"]["provider"];
-  lastFmConfigured: boolean;
+  expandedGraphConfigured: boolean;
   seedsAnalyzed: number;
   notes: string[];
 }): RecommendationResponse {
@@ -323,7 +323,7 @@ function noCollaborativeMatches(values: {
     recommendations: [],
     sourceSummary: {
       provider: values.provider,
-      lastFmConfigured: values.lastFmConfigured,
+      expandedGraphConfigured: values.expandedGraphConfigured,
       seedsAnalyzed: values.seedsAnalyzed,
       spotifyMatches: 0,
       notes: values.notes,

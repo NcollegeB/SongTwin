@@ -35,7 +35,7 @@ export type SimplifiedTrack = {
   albumName?: string;
   imageUrl?: string;
   spotifyUrl?: string;
-  lastFmUrl?: string;
+  sourceUrl?: string;
   durationMs?: number;
   popularity?: number;
 };
@@ -45,7 +45,7 @@ export type Recommendation = SimplifiedTrack & {
   score: number;
   confidence: number;
   support: number;
-  signal: "lastfm-co-listening" | "listenbrainz-collaborative";
+  signal: "expanded-graph" | "standard-graph";
   reason: string;
   seedNames: string[];
   matchedOnSpotify: boolean;
@@ -54,8 +54,8 @@ export type Recommendation = SimplifiedTrack & {
 export type RecommendationResponse = {
   recommendations: Recommendation[];
   sourceSummary: {
-    provider: "lastfm" | "listenbrainz" | "idle";
-    lastFmConfigured: boolean;
+    provider: "expanded" | "standard" | "idle";
+    expandedGraphConfigured: boolean;
     seedsAnalyzed: number;
     spotifyMatches: number;
     notes: string[];
@@ -65,7 +65,7 @@ export type RecommendationResponse = {
 export type ApiSessionResponse = {
   connected: boolean;
   spotifyConfigured: boolean;
-  lastFmConfigured: boolean;
+  expandedGraphConfigured: boolean;
   profile?: SpotifyProfile;
   expiresAt?: number;
   setupSteps: string[];

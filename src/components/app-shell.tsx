@@ -39,7 +39,7 @@ type AppShellProps = {
 
 const initialSummary: RecommendationResponse["sourceSummary"] = {
   provider: "idle",
-  lastFmConfigured: false,
+  expandedGraphConfigured: false,
   seedsAnalyzed: 0,
   spotifyMatches: 0,
   notes: [],
@@ -49,8 +49,8 @@ const PLAYLIST_RECOMMENDATION_SEED_LIMIT = 20;
 const SONG_RECOMMENDATION_SEED_LIMIT = 20;
 const RECOMMENDATION_RESULT_LIMIT = 24;
 
-function idleSummary(lastFmConfigured = false): RecommendationResponse["sourceSummary"] {
-  return { ...initialSummary, lastFmConfigured };
+function idleSummary(expandedGraphConfigured = false): RecommendationResponse["sourceSummary"] {
+  return { ...initialSummary, expandedGraphConfigured };
 }
 
 function songSeedKey(track: SimplifiedTrack) {
@@ -132,7 +132,7 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
           : `${sourceTracks.length} source songs`;
   const sourceArtist =
     !connected
-      ? "Use your playlists and song searches to find listener-overlap matches"
+      ? "Use your playlists and song searches to find your next perfect song"
       : mode === "playlist"
       ? selectedPlaylist?.owner ?? "Your library"
       : sourceTracks.length === 0
@@ -150,16 +150,18 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
     : "";
   const graphReady =
     recommendations.length > 0 &&
-    (sourceSummary.provider === "lastfm" || sourceSummary.provider === "listenbrainz");
-  const needsLastFm =
+    (sourceSummary.provider === "expanded" || sourceSummary.provider === "standard");
+  const needsExpandedGraph =
     connected &&
     recommendations.length === 0 &&
-    !sourceSummary.lastFmConfigured &&
+    !sourceSummary.expandedGraphConfigured &&
     sourceSummary.provider !== "idle";
 
-  function resetRecommendationState(lastFmConfigured = session?.lastFmConfigured ?? sourceSummary.lastFmConfigured) {
+  function resetRecommendationState(
+    expandedGraphConfigured = session?.expandedGraphConfigured ?? sourceSummary.expandedGraphConfigured,
+  ) {
     setRecommendations([]);
-    setSourceSummary(idleSummary(lastFmConfigured));
+    setSourceSummary(idleSummary(expandedGraphConfigured));
   }
 
   const fetchJson = useCallback(async function fetchJson<T>(url: string, init?: RequestInit) {
@@ -250,12 +252,12 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
         setSelectedPlaylistId("");
         setSourceTracks([]);
         setRecommendations([]);
-        setSourceSummary(idleSummary(data.lastFmConfigured));
+        setSourceSummary(idleSummary(data.expandedGraphConfigured));
         return;
       }
 
       setRecommendations([]);
-      setSourceSummary(idleSummary(data.lastFmConfigured));
+      setSourceSummary(idleSummary(data.expandedGraphConfigured));
       const playlistPayload = await fetchJson<{ playlists: PlaylistSummary[] }>("/api/playlists");
       setPlaylists(playlistPayload.playlists);
       await loadFirstAvailablePlaylist(playlistPayload.playlists);
@@ -437,7 +439,7 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
                 </div>
                 <div>
                   <h1 className="text-xl font-bold tracking-normal">SongTwin</h1>
-                  <p className="text-xs text-[#b3b3b3]">Listener graph discovery</p>
+                  <p className="text-xs text-[#b3b3b3]">Multi-source music discovery</p>
                 </div>
               </div>
               <StatusPill connected={connected} loading={sessionLoading} />
@@ -611,7 +613,7 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
                 <GraphHealth
                   connected={connected}
                   graphReady={graphReady}
-                  needsLastFm={needsLastFm}
+                  needsExpandedGraph={needsExpandedGraph}
                 />
               </div>
             </div>
@@ -676,7 +678,7 @@ export function AppShell({ accountControls, accountSettings, getAccountToken }: 
                 <h3 className="text-2xl font-bold tracking-normal">Songs to try next</h3>
                 <p className="mt-1 text-sm text-[#a7a7a7]">
                   {recommendations.length > 0
-                    ? "Ranked from listener-overlap sources and mapped back to Spotify."
+                    ? "Ranked by SongTwin's multi-source music algorithm and mapped back to Spotify."
                     : emptyRecommendationMessage(sourceSummary, connected, mode)}
                 </p>
               </div>
@@ -890,7 +892,7 @@ function ConnectLibraryPrompt() {
       </div>
       <h2 className="mt-4 text-base font-bold">Connect your Spotify library</h2>
       <p className="mt-2 text-sm leading-6 text-[#a7a7a7]">
-        SongTwin uses your playlists, liked songs, and search selections as seeds for listener-overlap matching.
+        SongTwin uses your playlists, liked songs, and search selections as seeds for its multi-source music algorithm.
       </p>
     </div>
   );
@@ -1184,7 +1186,7 @@ function LoadingPanel() {
     <div className="flex min-h-48 items-center justify-center rounded-lg border border-[#242424] bg-[#181818] text-sm text-[#a7a7a7]">
       <div className="flex items-center gap-2">
         <Loader2 className="animate-spin" size={18} />
-        Building listener graph
+        Compiling music signals
       </div>
     </div>
   );
@@ -1207,14 +1209,14 @@ function EmptyPanel({
         <Headphones size={22} aria-hidden="true" />
       </div>
       <h4 className="mt-4 text-lg font-bold">
-        {connected && !hasRun ? "Ready to find songs" : "No listener-overlap songs yet"}
+        {connected && !hasRun ? "Ready to find songs" : "No strong matches yet"}
       </h4>
       <p className="mt-2 max-w-2xl text-sm leading-6 text-[#b3b3b3]">
         {emptyRecommendationMessage(summary, connected, mode)}
       </p>
-      {connected && hasRun && !summary.lastFmConfigured ? (
+      {connected && hasRun && !summary.expandedGraphConfigured ? (
         <p className="mt-3 max-w-2xl text-sm leading-6 text-[#b3b3b3]">
-          A Last.fm API key gives SongTwin a wider track similarity graph than the no-key ListenBrainz fallback.
+          Try a broader playlist or add more source songs so the algorithm has more music signals to compare.
         </p>
       ) : null}
     </div>
@@ -1292,12 +1294,7 @@ function Cover({
 }
 
 function SourceBadge({ summary }: { summary: RecommendationResponse["sourceSummary"] }) {
-  const label =
-    summary.provider === "lastfm"
-        ? "Last.fm graph"
-        : summary.provider === "listenbrainz"
-          ? "ListenBrainz graph"
-          : "Listener graph";
+  const label = summary.provider === "idle" ? "SongTwin graph" : "Multi-source graph";
 
   return (
     <span className="inline-flex h-8 items-center rounded-full bg-black/30 px-3 text-xs font-bold text-white">
@@ -1309,22 +1306,22 @@ function SourceBadge({ summary }: { summary: RecommendationResponse["sourceSumma
 function GraphHealth({
   connected,
   graphReady,
-  needsLastFm,
+  needsExpandedGraph,
 }: {
   connected: boolean;
   graphReady: boolean;
-  needsLastFm: boolean;
+  needsExpandedGraph: boolean;
 }) {
   const label = !connected
     ? "Sign in"
     : graphReady
-      ? "Listener match"
-      : needsLastFm
-        ? "Add Last.fm key"
+      ? "Strong match"
+      : needsExpandedGraph
+        ? "Limited graph"
         : "Ready";
   const className = graphReady
     ? "bg-[#1db954] text-black"
-    : needsLastFm
+    : needsExpandedGraph
       ? "bg-[#f5b84b] text-black"
       : "bg-[#242424] text-[#d8d8d8]";
 
@@ -1344,18 +1341,17 @@ function modeButtonClass(active: boolean) {
 
 function signalLabel(signal: Recommendation["signal"]) {
   switch (signal) {
-    case "lastfm-co-listening":
-      return "Last.fm listeners";
-    case "listenbrainz-collaborative":
-      return "ListenBrainz listeners";
+    case "expanded-graph":
+    case "standard-graph":
+      return "Audience match";
   }
 }
 
 function signalClass(signal: Recommendation["signal"]) {
   const base = "inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold";
   switch (signal) {
-    case "lastfm-co-listening":
-    case "listenbrainz-collaborative":
+    case "expanded-graph":
+    case "standard-graph":
       return `${base} bg-[#1db954] text-black`;
   }
 }
@@ -1366,20 +1362,20 @@ function emptyRecommendationMessage(
   mode: SourceMode,
 ) {
   if (!connected) {
-    return "Connect Spotify to choose a playlist or song and build recommendations from listener-overlap data.";
+    return "Connect Spotify to choose a playlist or song and build recommendations from multiple music databases and websites.";
   }
 
   if (summary.provider === "idle") {
     return mode === "song"
       ? "Search for songs, add them to Source Songs, then run Find songs to build recommendations."
-      : "Choose a playlist, then run Find songs to build recommendations from listener-overlap data.";
+      : "Choose a playlist, then run Find songs to compile signals from multiple music databases and websites.";
   }
 
-  if (!summary.lastFmConfigured) {
-    return "ListenBrainz did not return cross-artist listener matches for this source. SongTwin is hiding same-artist Spotify catalog filler; add LASTFM_API_KEY for the stronger listener graph.";
+  if (!summary.expandedGraphConfigured) {
+    return "SongTwin did not find strong cross-artist matches for this source. Try more source songs or a broader playlist.";
   }
 
-  return "No cross-artist listener matches came back for this source. Try a broader playlist or a different source song.";
+  return "No strong cross-artist matches came back for this source. Try a broader playlist or a different source song.";
 }
 
 function oauthErrorMessage(error: string) {

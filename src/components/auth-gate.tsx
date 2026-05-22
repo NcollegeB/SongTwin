@@ -268,7 +268,7 @@ export function AuthGate({ children, requireSubscription = true }: AuthGateProps
       <AuthFrame
         icon={<Sparkles size={22} />}
         title={mode === "signup" ? "Create your SongTwin account" : "Sign in to SongTwin"}
-        subtitle="Subscribe once, then connect Spotify to build recommendations from listener-overlap data."
+        subtitle="Subscribe once, then connect Spotify to build recommendations from SongTwin's multi-source music algorithm."
       >
         <form className="mt-6 grid gap-3" onSubmit={handleAuth}>
           <label className="grid gap-2 text-sm font-semibold text-[#d8d8d8]">
@@ -482,7 +482,7 @@ function SubscribeScreen({
               Start with 3 days free.
             </h1>
             <p className="mt-5 max-w-2xl text-lg leading-8 text-[#b3b3b3]">
-              Connect Spotify, choose playlists or songs, and find recommendations ranked by shared listener behavior. Checkout opens on Stripe, and your first charge starts after the trial.
+              Connect Spotify, choose playlists or songs, and find recommendations ranked by the SongTwin multi-source music algorithm. Checkout opens on Stripe, and your first charge starts after the trial.
             </p>
             <div className="mt-7 grid gap-3 sm:grid-cols-3">
               {["3-day free trial", "Spotify playlist and song seeds", "Direct Spotify links for every match"].map(

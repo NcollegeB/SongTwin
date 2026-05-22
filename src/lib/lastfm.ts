@@ -29,8 +29,8 @@ type LastFmSimilarResponse = {
   message?: string;
 };
 
-export function lastFmConfigured() {
-  return Boolean(process.env.LASTFM_API_KEY);
+export function expandedGraphConfigured() {
+  return Boolean(process.env.SONGTWIN_GRAPH_API_KEY ?? process.env.LASTFM_API_KEY);
 }
 
 export async function getSimilarTracks(values: {
@@ -38,7 +38,7 @@ export async function getSimilarTracks(values: {
   artistName: string;
   limit?: number;
 }) {
-  const apiKey = process.env.LASTFM_API_KEY;
+  const apiKey = process.env.SONGTWIN_GRAPH_API_KEY ?? process.env.LASTFM_API_KEY;
   if (!apiKey) {
     return [];
   }
@@ -58,12 +58,12 @@ export async function getSimilarTracks(values: {
   });
 
   if (!response.ok) {
-    throw new Error(`Last.fm request failed with status ${response.status}`);
+    throw new Error(`Expanded graph request failed with status ${response.status}`);
   }
 
   const data = (await response.json()) as LastFmSimilarResponse;
   if (data.error) {
-    throw new Error(data.message || `Last.fm returned error ${data.error}`);
+    throw new Error(data.message || `Expanded graph returned error ${data.error}`);
   }
 
   const trackList = Array.isArray(data.similartracks?.track)

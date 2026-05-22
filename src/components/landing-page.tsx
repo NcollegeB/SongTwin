@@ -31,9 +31,9 @@ const currentsCover =
   "https://image-cdn-fa.spotifycdn.com/image/ab67616d00001e029e1cfc756886ac782e363d79";
 
 const previewRecommendations = [
-  { title: "Electric Feel", artist: "MGMT", fit: 96, signal: "Psych-pop overlap" },
+  { title: "Electric Feel", artist: "MGMT", fit: 96, signal: "Psych-pop fit" },
   { title: "Chamber of Reflection", artist: "Mac DeMarco", fit: 93, signal: "Dreamy groove match" },
-  { title: "Instant Crush", artist: "Daft Punk", fit: 90, signal: "Synth-pop listener link" },
+  { title: "Instant Crush", artist: "Daft Punk", fit: 90, signal: "Synth-pop fit signal" },
   { title: "Sweet Disposition", artist: "The Temper Trap", fit: 87, signal: "Indie anthem pull" },
 ];
 
@@ -70,7 +70,7 @@ export function LandingPage() {
                 Find your perfect song now.
               </h1>
               <p className="mt-6 max-w-2xl text-xl leading-9 text-[#e6eee9]">
-                SongTwin starts with a song or playlist you already love, then finds tracks that fit the same listener taste. Start free for 3 days, then keep discovering for $4.99/month.
+                SongTwin starts with a song or playlist you already love, then compiles signals from multiple music databases and websites into one algorithm built to find your next perfect song. Start free for 3 days, then keep discovering for $4.99/month.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <Link className="connect-button min-h-12 px-6" href="/app">
@@ -94,7 +94,7 @@ export function LandingPage() {
               Start with one song. See where the taste leads.
             </h2>
             <p className="mt-5 max-w-2xl text-lg leading-8 text-[#b3b3b3]">
-              Here is a static sample using Tame Impala as the source. SongTwin is designed to turn that starting point into nearby tracks from artists your taste already points toward.
+              Using Tame Impala as the source, SongTwin compiles data across music databases and websites, then turns that starting point into tracks your taste already points toward.
             </p>
             <Link className="connect-button mt-7 min-h-12 px-6" href="/app">
               Try your own song
@@ -152,11 +152,11 @@ export function LandingPage() {
               Built for the moment when your playlist needs one more great song.
             </h2>
             <p className="mt-5 max-w-3xl text-lg leading-8 text-[#b3b3b3]">
-              Search a track, pick a playlist, or start from your liked songs. SongTwin looks for music connected by shared listener behavior and brings the best matches back into a clean Spotify-ready view.
+              Search a track, pick a playlist, or start from your liked songs. SongTwin blends multiple music databases, public catalog signals, and music-web sources into a single recommendation algorithm.
             </p>
             <div className="mt-8 grid gap-4 sm:grid-cols-3">
               <Feature icon={<Heart size={20} />} title="Start with taste" text="Use a song or playlist that already matches your mood." />
-              <Feature icon={<Compass size={20} />} title="Go past obvious" text="Surface tracks connected by listener patterns, not just artist catalog filler." />
+              <Feature icon={<Compass size={20} />} title="Go past obvious" text="Surface tracks from a broader algorithm, not just artist catalog filler." />
               <Feature icon={<Headphones size={20} />} title="Play it fast" text="Open matched songs in Spotify and keep building from what works." />
             </div>
           </div>
@@ -190,7 +190,7 @@ export function LandingPage() {
               {[
                 "Search any Spotify track and find similar-feeling songs",
                 "Pick playlists or liked songs as recommendation sources",
-                "Ranked matches from listener-overlap signals",
+                "Ranked matches from a multi-source discovery algorithm",
                 "Spotify links so you can listen and save quickly",
               ].map((item) => (
                 <div className="flex items-start gap-3 rounded-lg bg-[#121212] p-4" key={item}>
@@ -245,11 +245,11 @@ export function LandingPage() {
         <div className="mx-auto max-w-7xl">
           <p className="text-sm font-bold uppercase tracking-[0.14em] text-[#1db954]">How it works</p>
           <h2 className="mt-3 max-w-3xl text-4xl font-black tracking-normal sm:text-5xl">
-            SongTwin turns one music choice into a listener-shaped recommendation set.
+            SongTwin turns one music choice into a taste-shaped recommendation set.
           </h2>
           <div className="mt-10 grid gap-5 md:grid-cols-3">
             <Feature icon={<Library size={20} />} title="Choose a source" text="Connect Spotify, then pick liked songs, a playlist, or a searched track." />
-            <Feature icon={<Radio size={20} />} title="Read the signal" text="SongTwin compares co-listening sources to find tracks that move with the same audience." />
+            <Feature icon={<Radio size={20} />} title="Run the algorithm" text="SongTwin compiles data from multiple databases and websites into one recommendation score." />
             <Feature icon={<Headphones size={20} />} title="Try the matches" text="Ranked results are mapped back to Spotify when a catalog match is available." />
           </div>
         </div>
