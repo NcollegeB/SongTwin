@@ -97,7 +97,7 @@ export function AppShell({ accountSettings, getAccountToken }: AppShellProps = {
   const [tracks, setTracks] = useState<SimplifiedTrack[]>([]);
   const [playlistSeedTracks, setPlaylistSeedTracks] = useState<SimplifiedTrack[]>([]);
   const [sourceTracks, setSourceTracks] = useState<SimplifiedTrack[]>([]);
-  const [mode, setMode] = useState<SourceMode>("playlist");
+  const [mode, setMode] = useState<SourceMode>("song");
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [sourceSummary, setSourceSummary] =
     useState<RecommendationResponse["sourceSummary"]>(initialSummary);
@@ -117,8 +117,9 @@ export function AppShell({ accountSettings, getAccountToken }: AppShellProps = {
   const sourceSeedCount = sourceSeedTracks.length;
   const displayedSeedCount =
     sourceSummary.provider === "idle" ? sourceSeedCount : sourceSummary.seedsAnalyzed;
+  const playlistNeedsSpotify = mode === "playlist" && !connected;
   const sourceName =
-    !connected
+    playlistNeedsSpotify
       ? "Connect Spotify"
       : mode === "playlist"
       ? selectedPlaylist?.source === "liked"
@@ -130,28 +131,29 @@ export function AppShell({ accountSettings, getAccountToken }: AppShellProps = {
           ? sourceTracks[0].name
           : `${sourceTracks.length} source songs`;
   const sourceArtist =
-    !connected
-      ? "Use your playlists and song searches to find your next perfect song"
+    playlistNeedsSpotify
+      ? "Use Spotify for playlist import, or switch to Song search without Spotify"
       : mode === "playlist"
       ? selectedPlaylist?.owner ?? "Your library"
       : sourceTracks.length === 0
-        ? "Search Spotify and add songs as seeds"
+        ? connected
+          ? "Search Spotify or public music sources and add songs as seeds"
+          : "Search public music sources and add songs as seeds"
         : sourceTracks.length === 1
           ? sourceTracks[0].artistName
           : `Based on ${sourceTracks.slice(0, 3).map((track) => track.name).join(", ")}`;
   const sourceArtwork =
     mode === "playlist" ? selectedPlaylist?.imageUrl ?? tracks[0]?.imageUrl : sourceTracks[0]?.imageUrl;
-  const sourceKindLabel = !connected ? "Spotify source" : mode === "playlist" ? "Source playlist" : "Source songs";
-  const sourceDetail = connected
-    ? mode === "playlist"
+  const sourceKindLabel = mode === "playlist" ? "Source playlist" : "Source songs";
+  const sourceDetail = playlistNeedsSpotify
+    ? ""
+    : mode === "playlist"
       ? `${sourceSeedCount} random source song${sourceSeedCount === 1 ? "" : "s"} selected from this playlist. Results return up to ${RECOMMENDATION_RESULT_LIMIT} songs.`
-      : `${sourceSeedCount} source song${sourceSeedCount === 1 ? "" : "s"} selected. Results return up to ${RECOMMENDATION_RESULT_LIMIT} songs.`
-    : "";
+      : `${sourceSeedCount} source song${sourceSeedCount === 1 ? "" : "s"} selected. Results return up to ${RECOMMENDATION_RESULT_LIMIT} songs.`;
   const graphReady =
     recommendations.length > 0 &&
     (sourceSummary.provider === "expanded" || sourceSummary.provider === "standard");
   const needsExpandedGraph =
-    connected &&
     recommendations.length === 0 &&
     !sourceSummary.expandedGraphConfigured &&
     sourceSummary.provider !== "idle";
@@ -194,7 +196,7 @@ export function AppShell({ accountSettings, getAccountToken }: AppShellProps = {
   }, []);
 
   useEffect(() => {
-    if (mode !== "song" || !connected) {
+    if (mode !== "song") {
       return;
     }
 
@@ -234,7 +236,7 @@ export function AppShell({ accountSettings, getAccountToken }: AppShellProps = {
       controller.abort();
       window.clearTimeout(timeout);
     };
-  }, [connected, fetchJson, mode, searchTerm]);
+  }, [fetchJson, mode, searchTerm]);
 
   async function loadSession() {
     setSessionLoading(true);
@@ -249,7 +251,6 @@ export function AppShell({ accountSettings, getAccountToken }: AppShellProps = {
         setTracks([]);
         setPlaylistSeedTracks([]);
         setSelectedPlaylistId("");
-        setSourceTracks([]);
         setRecommendations([]);
         setSourceSummary(idleSummary(data.expandedGraphConfigured));
         return;
@@ -318,11 +319,6 @@ export function AppShell({ accountSettings, getAccountToken }: AppShellProps = {
 
   async function searchSpotify(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!connected) {
-      setError("Connect Spotify before searching.");
-      return;
-    }
-
     if (!searchTerm.trim()) {
       setSearchResults([]);
       return;
@@ -344,8 +340,8 @@ export function AppShell({ accountSettings, getAccountToken }: AppShellProps = {
   }
 
   async function runRecommendations() {
-    if (!connected) {
-      setError("Connect Spotify to find songs from your playlists or searches.");
+    if (mode === "playlist" && !connected) {
+      setError("Connect Spotify to use playlists, or switch to Song search to find songs without Spotify.");
       return;
     }
 
@@ -566,7 +562,7 @@ export function AppShell({ accountSettings, getAccountToken }: AppShellProps = {
                     ) : (
                       <Play size={15} aria-hidden="true" />
                     )}
-                    <span className="sr-only">Search Spotify</span>
+                    <span className="sr-only">Search songs</span>
                   </button>
                 </form>
 
@@ -582,7 +578,7 @@ export function AppShell({ accountSettings, getAccountToken }: AppShellProps = {
                   query={searchTerm}
                   searching={searching}
                   sourceTracks={sourceTracks}
-                  tracks={connected ? searchResults : []}
+                  tracks={searchResults}
                   onAdd={addSourceTrack}
                 />
               </div>
@@ -610,7 +606,7 @@ export function AppShell({ accountSettings, getAccountToken }: AppShellProps = {
                     {session?.profile?.displayName ?? "Taste Explorer"}
                   </p>
                   <p className="truncate text-xs text-[#d8e8de]">
-                    {connected ? "Connected with Spotify" : "Connect Spotify to start"}
+                    {connected ? "Connected with Spotify" : "Spotify optional for song search"}
                   </p>
                 </div>
               </div>
@@ -653,7 +649,7 @@ export function AppShell({ accountSettings, getAccountToken }: AppShellProps = {
                 <div className="mt-5 flex flex-wrap items-center gap-3">
                   <button
                     className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-[#1db954] px-6 text-sm font-bold text-black shadow-lg shadow-black/25 transition hover:scale-[1.02] hover:bg-[#1ed760] disabled:cursor-not-allowed disabled:opacity-60"
-                    disabled={!connected || running || sessionLoading || sourceSeedCount === 0}
+                    disabled={playlistNeedsSpotify || running || sessionLoading || sourceSeedCount === 0}
                     onClick={runRecommendations}
                     type="button"
                   >
@@ -685,7 +681,9 @@ export function AppShell({ accountSettings, getAccountToken }: AppShellProps = {
                 <h3 className="text-2xl font-bold tracking-normal">Songs to try next</h3>
                 <p className="mt-1 text-sm text-[#a7a7a7]">
                   {recommendations.length > 0
-                    ? "Ranked by SongTwin's multi-source music algorithm and mapped back to Spotify."
+                    ? connected
+                      ? "Ranked by SongTwin's multi-source music algorithm and mapped back to Spotify when possible."
+                      : "Ranked by SongTwin's multi-source music algorithm with quick links for listening."
                     : emptyRecommendationMessage(sourceSummary, connected, mode)}
                 </p>
               </div>
@@ -731,9 +729,9 @@ function StatusPill({ connected, loading }: { connected: boolean; loading: boole
       ) : connected ? (
         <CheckCircle2 className="text-[#1db954]" size={16} aria-hidden="true" />
       ) : (
-        <CircleAlert className="text-[#f5b84b]" size={16} aria-hidden="true" />
+        <Sparkles className="text-[#1db954]" size={16} aria-hidden="true" />
       )}
-      <span className="sr-only">{loading ? "Checking" : connected ? "Spotify linked" : "Spotify not linked"}</span>
+      <span className="sr-only">{loading ? "Checking" : connected ? "Spotify linked" : "Song search ready"}</span>
     </div>
   );
 }
@@ -900,9 +898,9 @@ function ConnectLibraryPrompt() {
       <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#242424] text-[#1db954]">
         <PlugZap size={20} aria-hidden="true" />
       </div>
-      <h2 className="mt-4 text-base font-bold">Connect your Spotify library</h2>
+      <h2 className="mt-4 text-base font-bold">Connect Spotify for playlists</h2>
       <p className="mt-2 text-sm leading-6 text-[#a7a7a7]">
-        SongTwin uses your playlists, liked songs, and search selections as seeds for its multi-source music algorithm.
+        Playlist import needs Spotify. You can also switch to Song search and find recommendations without connecting Spotify.
       </p>
     </div>
   );
@@ -932,28 +930,32 @@ function SearchResults({
         <div>
           <h2 className="text-sm font-bold">Search Results</h2>
           <p className="mt-0.5 text-xs text-[#a7a7a7]">
-            {tracks.length > 0 ? `${tracks.length} songs found` : "Search Spotify"}
+            {tracks.length > 0
+              ? `${tracks.length} songs found`
+              : connected
+                ? "Search Spotify and public sources"
+                : "Search public music sources"}
           </p>
         </div>
       </div>
 
       <div className="mt-3 min-h-[140px] flex-1 overflow-y-auto pr-1">
         <div className="grid gap-2">
-          {connected && trimmedQuery.length === 0 ? (
+          {trimmedQuery.length === 0 ? (
             <p className="rounded-lg bg-[#121212] p-3 text-sm text-[#a7a7a7]">
               Search for a track, then add songs as source seeds.
             </p>
           ) : null}
-          {connected && trimmedQuery.length > 0 && trimmedQuery.length < 2 ? (
+          {trimmedQuery.length > 0 && trimmedQuery.length < 2 ? (
             <p className="rounded-lg bg-[#121212] p-3 text-sm text-[#a7a7a7]">Keep typing.</p>
           ) : null}
-          {connected && trimmedQuery.length >= 2 && searching ? (
+          {trimmedQuery.length >= 2 && searching ? (
             <div className="flex items-center gap-2 rounded-lg bg-[#121212] p-3 text-sm text-[#a7a7a7]">
               <Loader2 className="animate-spin" size={16} />
-              Searching Spotify
+              Searching songs
             </div>
           ) : null}
-          {connected && trimmedQuery.length >= 2 && !searching && tracks.length === 0 ? (
+          {trimmedQuery.length >= 2 && !searching && tracks.length === 0 ? (
             <p className="rounded-lg bg-[#121212] p-3 text-sm text-[#a7a7a7]">No songs found.</p>
           ) : null}
 
@@ -1224,12 +1226,12 @@ function EmptyPanel({
         <Headphones size={22} aria-hidden="true" />
       </div>
       <h4 className="mt-4 text-lg font-bold">
-        {connected && !hasRun ? "Ready to find songs" : "No strong matches yet"}
+        {!hasRun ? "Ready to find songs" : "No strong matches yet"}
       </h4>
       <p className="mt-2 max-w-2xl text-sm leading-6 text-[#b3b3b3]">
         {emptyRecommendationMessage(summary, connected, mode)}
       </p>
-      {connected && hasRun && !summary.expandedGraphConfigured ? (
+      {hasRun && !summary.expandedGraphConfigured ? (
         <p className="mt-3 max-w-2xl text-sm leading-6 text-[#b3b3b3]">
           Try a broader playlist or add more source songs so the algorithm has more music signals to compare.
         </p>
@@ -1327,13 +1329,13 @@ function GraphHealth({
   graphReady: boolean;
   needsExpandedGraph: boolean;
 }) {
-  const label = !connected
-    ? "Sign in"
-    : graphReady
+  const label = graphReady
       ? "Strong match"
       : needsExpandedGraph
         ? "Limited graph"
-        : "Ready";
+        : connected
+          ? "Spotify linked"
+          : "Ready";
   const className = graphReady
     ? "bg-[#1db954] text-black"
     : needsExpandedGraph
@@ -1377,7 +1379,9 @@ function emptyRecommendationMessage(
   mode: SourceMode,
 ) {
   if (!connected) {
-    return "Connect Spotify to choose a playlist or song and build recommendations from multiple music databases and websites.";
+    return mode === "playlist"
+      ? "Connect Spotify to use playlists, or switch to Song search to find songs without Spotify."
+      : "Search for songs, add them to Source Songs, then run Find songs to build recommendations from multiple music databases and websites.";
   }
 
   if (summary.provider === "idle") {

@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "SongTwin - Find your next perfect song",
   description:
-    "A Spotify-powered song discovery app that helps you find tracks that fit the music you already love.",
+    "A multi-source song discovery app that helps you find tracks that fit the music you already love.",
 };
 
 export default function RootLayout({

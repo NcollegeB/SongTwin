@@ -10,6 +10,7 @@ import {
   Heart,
   Library,
   Mail,
+  MessageCircle,
   Music2,
   PlayCircle,
   Radio,
@@ -37,6 +38,29 @@ const previewRecommendations = [
   { title: "Sweet Disposition", artist: "The Temper Trap", fit: 87, signal: "Indie anthem pull" },
 ];
 
+const faqItems = [
+  {
+    question: "Do I need Spotify to use SongTwin?",
+    answer:
+      "No. You can search for songs and run recommendations without connecting Spotify. Spotify is optional for importing playlists, liked songs, and opening exact Spotify track links when available.",
+  },
+  {
+    question: "What happens after the free trial?",
+    answer:
+      "SongTwin starts with a 3-day free trial. After that, the subscription renews at $4.99/month unless you cancel in the Stripe billing portal.",
+  },
+  {
+    question: "How are recommendations different?",
+    answer:
+      "SongTwin compiles music signals from multiple databases and websites, ranks the strongest cross-artist matches, and avoids filling the page with weak same-artist catalog results.",
+  },
+  {
+    question: "Can I cancel anytime?",
+    answer:
+      "Yes. The account settings area links to Stripe's billing portal, where customers can manage or cancel their subscription.",
+  },
+];
+
 export function LandingPage() {
   return (
     <main className="bg-black text-white">
@@ -55,6 +79,7 @@ export function LandingPage() {
               <a className="hover:text-white" href="#home">Home</a>
               <a className="hover:text-white" href="#about">About</a>
               <a className="hover:text-white" href="#pricing">Pricing</a>
+              <a className="hover:text-white" href="#faq">FAQ</a>
               <a className="hover:text-white" href="#contact">Contact</a>
             </div>
             <LandingAccountNav />
@@ -70,7 +95,7 @@ export function LandingPage() {
                 Find your perfect song now.
               </h1>
               <p className="mt-6 max-w-2xl text-xl leading-9 text-[#e6eee9]">
-                SongTwin starts with a song or playlist you already love, then compiles signals from multiple music databases and websites into one algorithm built to find your next perfect song. Start free for 3 days, then keep discovering for $4.99/month.
+                SongTwin starts with a song you already love, then compiles signals from multiple music databases and websites into one algorithm built to find your next perfect song. Search without Spotify, or connect Spotify later for playlists. Start free for 3 days, then keep discovering for $4.99/month.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <Link className="connect-button min-h-12 px-6" href="/app">
@@ -94,7 +119,7 @@ export function LandingPage() {
               Start with one song. See where the taste leads.
             </h2>
             <p className="mt-5 max-w-2xl text-lg leading-8 text-[#b3b3b3]">
-              Using Tame Impala as the source, SongTwin compiles data across music databases and websites, then turns that starting point into tracks your taste already points toward.
+              Using Tame Impala as the source, SongTwin compiles data across music databases and websites, then turns that starting point into tracks your taste already points toward. No Spotify connection is required for this kind of song search.
             </p>
             <Link className="connect-button mt-7 min-h-12 px-6" href="/app">
               Try your own song
@@ -155,7 +180,7 @@ export function LandingPage() {
               Search a track, pick a playlist, or start from your liked songs. SongTwin blends multiple music databases, public catalog signals, and music-web sources into a single recommendation algorithm.
             </p>
             <div className="mt-8 grid gap-4 sm:grid-cols-3">
-              <Feature icon={<Heart size={20} />} title="Start with taste" text="Use a song or playlist that already matches your mood." />
+              <Feature icon={<Heart size={20} />} title="Start with taste" text="Use a song that already matches your mood, with playlist import available when Spotify is connected." />
               <Feature icon={<Compass size={20} />} title="Go past obvious" text="Surface tracks from a broader algorithm, not just artist catalog filler." />
               <Feature icon={<Headphones size={20} />} title="Play it fast" text="Open matched songs in Spotify and keep building from what works." />
             </div>
@@ -188,10 +213,10 @@ export function LandingPage() {
             </h2>
             <div className="mt-8 grid gap-4 sm:grid-cols-2">
               {[
-                "Search any Spotify track and find similar-feeling songs",
-                "Pick playlists or liked songs as recommendation sources",
+                "Search songs without connecting Spotify",
+                "Optionally use Spotify playlists or liked songs as sources",
                 "Ranked matches from a multi-source discovery algorithm",
-                "Spotify links so you can listen and save quickly",
+                "Spotify and YouTube links so you can listen quickly",
               ].map((item) => (
                 <div className="flex items-start gap-3 rounded-lg bg-[#121212] p-4" key={item}>
                   <CheckCircle2 className="mt-0.5 shrink-0 text-[#1db954]" size={18} />
@@ -223,6 +248,28 @@ export function LandingPage() {
         </div>
       </section>
 
+      <section className="border-y border-[#242424] bg-[#0b0b0b] px-5 py-16 sm:px-8" id="faq">
+        <div className="mx-auto max-w-7xl">
+          <p className="text-sm font-bold uppercase tracking-[0.14em] text-[#1db954]">FAQ</p>
+          <h2 className="mt-3 max-w-3xl text-4xl font-black tracking-normal sm:text-5xl">
+            Launch-ready answers for new listeners.
+          </h2>
+          <div className="mt-8 grid gap-4 md:grid-cols-2">
+            {faqItems.map((item) => (
+              <div className="rounded-lg border border-[#242424] bg-[#121212] p-5" key={item.question}>
+                <div className="flex items-start gap-3">
+                  <MessageCircle className="mt-1 shrink-0 text-[#1db954]" size={19} aria-hidden="true" />
+                  <div>
+                    <h3 className="text-lg font-black">{item.question}</h3>
+                    <p className="mt-2 text-sm leading-6 text-[#a7a7a7]">{item.answer}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section className="border-y border-[#242424] bg-[#0b0b0b] px-5 py-16 sm:px-8" id="contact">
         <div className="mx-auto flex max-w-7xl flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div>
@@ -248,12 +295,28 @@ export function LandingPage() {
             SongTwin turns one music choice into a taste-shaped recommendation set.
           </h2>
           <div className="mt-10 grid gap-5 md:grid-cols-3">
-            <Feature icon={<Library size={20} />} title="Choose a source" text="Connect Spotify, then pick liked songs, a playlist, or a searched track." />
+            <Feature icon={<Library size={20} />} title="Choose a source" text="Search for a song immediately, or connect Spotify to pick liked songs and playlists." />
             <Feature icon={<Radio size={20} />} title="Run the algorithm" text="SongTwin compiles data from multiple databases and websites into one recommendation score." />
-            <Feature icon={<Headphones size={20} />} title="Try the matches" text="Ranked results are mapped back to Spotify when a catalog match is available." />
+            <Feature icon={<Headphones size={20} />} title="Try the matches" text="Open ranked results in Spotify or YouTube when listening links are available." />
           </div>
         </div>
       </section>
+
+      <footer className="border-t border-[#242424] bg-black px-5 py-8 text-sm text-[#a7a7a7] sm:px-8">
+        <div className="mx-auto flex max-w-7xl flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-3">
+            <span className="flex h-8 w-8 items-center justify-center rounded bg-[#1db954] text-black">
+              <Waves size={18} aria-hidden="true" />
+            </span>
+            <span className="font-bold text-white">SongTwin</span>
+          </div>
+          <nav className="flex flex-wrap gap-4 font-semibold">
+            <Link className="hover:text-white" href="/privacy">Privacy</Link>
+            <Link className="hover:text-white" href="/terms">Terms</Link>
+            <Link className="hover:text-white" href="/contact">Contact</Link>
+          </nav>
+        </div>
+      </footer>
     </main>
   );
 }

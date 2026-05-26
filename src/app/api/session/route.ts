@@ -8,9 +8,7 @@ import type { ApiSessionResponse } from "@/lib/types";
 export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
-  const setupSteps = [
-    !spotifyConfigured() ? "Add SPOTIFY_CLIENT_ID to .env.local." : "",
-  ].filter(Boolean);
+  const setupSteps: string[] = [];
 
   if (!spotifyConfigured()) {
     return NextResponse.json<ApiSessionResponse>({

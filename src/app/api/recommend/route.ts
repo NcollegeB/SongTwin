@@ -16,12 +16,14 @@ export async function POST(request: NextRequest) {
     const body = (await request.json()) as RecommendBody;
     const seedTracks = Array.isArray(body.seedTracks) ? body.seedTracks : [];
     await requireActiveAccount(request);
-    const fresh = await requireSpotifySession(request);
-    const payload = await recommendFromSeeds(fresh.session, seedTracks, {
+    const fresh = await requireSpotifySession(request).catch(() => null);
+    const payload = await recommendFromSeeds(fresh?.session ?? null, seedTracks, {
       limit: body.limit ?? 24,
     });
     const response = NextResponse.json(payload);
-    attachRefreshedSession(response, fresh);
+    if (fresh) {
+      attachRefreshedSession(response, fresh);
+    }
     return response;
   } catch (error) {
     return routeErrorResponse(error);

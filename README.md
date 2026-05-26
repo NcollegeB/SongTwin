@@ -1,6 +1,6 @@
 # SongTwin
 
-SongTwin is a consumer Spotify web app for finding songs similar to a playlist or a single track. It connects to Spotify for account access, playlist browsing, and catalog search, then compiles signals from multiple music databases and websites into one discovery algorithm.
+SongTwin is a consumer song discovery web app for finding tracks that fit a playlist or a single track. It lets paid users search songs without Spotify, optionally connect Spotify for playlist and liked-song import, then compiles signals from multiple music databases and websites into one discovery algorithm.
 
 ## Features
 
@@ -8,19 +8,20 @@ SongTwin is a consumer Spotify web app for finding songs similar to a playlist o
 - Firebase Auth account login for paid users.
 - Firestore-backed subscription mirror for access control.
 - Stripe Checkout, Stripe Billing Portal, and signed webhook handling.
-- Spotify login with PKCE and encrypted HTTP-only session cookies.
-- Choose Liked Songs, a playlist you own/collaborate on, or search for a single song.
+- Optional Spotify login with PKCE and encrypted HTTP-only session cookies.
+- Search songs without Spotify, or choose Liked Songs and playlists when Spotify is connected.
 - Generate ranked song matches from a multi-source music algorithm.
 - Use an optional expanded graph API key for broader matching.
 - Fall back to a standard public music graph when the expanded graph is not configured.
-- Map recommendation candidates back to Spotify tracks so users can open them directly.
+- Map recommendation candidates back to Spotify when connected, with Spotify search and YouTube links available for public-catalog results.
+- Privacy, Terms, Contact, FAQ, and launch-ready pricing copy.
 - Clear empty states when strong cross-artist fit signals are unavailable.
 
 ## API Reality
 
 Spotify announced on November 27, 2024 that new Web API use cases can no longer access several endpoints and features, including recommendations, related artists, audio features, and audio analysis. Spotify also does not expose a public global graph of who liked which tracks.
 
-SongTwin therefore uses Spotify for identity, readable user sources, search, and track links. Spotify's current playlist-items endpoint only returns tracks for playlists owned by the current user or playlists where the user is a collaborator, so followed/editorial playlists are intentionally not shown as seed sources. The discovery signal is compiled from multiple music databases, public catalog data, and music-web sources:
+SongTwin therefore does not depend on Spotify for core song search or recommendation runs. Spotify is optional and is used for readable user sources, playlist/liked-song import, profile display, and exact track links when available. Spotify's current playlist-items endpoint only returns tracks for playlists owned by the current user or playlists where the user is a collaborator, so followed/editorial playlists are intentionally not shown as seed sources. The discovery signal is compiled from multiple music databases, public catalog data, and music-web sources:
 
 - Expanded graph matching when `SONGTWIN_GRAPH_API_KEY` is configured.
 - Standard public graph matching as a no-key fallback.
@@ -35,7 +36,7 @@ References:
 
 ## Local Setup
 
-1. Create a Spotify app in the Spotify Developer Dashboard.
+1. Optional: create a Spotify app in the Spotify Developer Dashboard if you want playlist import locally.
 2. Add this redirect URI to the Spotify app:
 
 ```text
@@ -48,7 +49,7 @@ http://127.0.0.1:3000/api/auth/callback
 cp .env.example .env.local
 ```
 
-4. Fill in:
+4. Fill in the variables you need. Firebase and Stripe are required for paid account access. Spotify is optional for song-search-only testing.
 
 ```bash
 SPOTIFY_CLIENT_ID=your_spotify_client_id
@@ -86,10 +87,9 @@ SongTwin is a standard Next.js app and can deploy to Vercel from the GitHub repo
 
 [Deploy from GitHub on Vercel](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FNcollegeB%2FSongTwin&project-name=song-twin&repository-name=SongTwin&env=SPOTIFY_CLIENT_ID,SPOTIFY_REDIRECT_URI,SESSION_SECRET,SONGTWIN_GRAPH_API_KEY,MUSICBRAINZ_USER_AGENT,NEXT_PUBLIC_FIREBASE_API_KEY,NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,NEXT_PUBLIC_FIREBASE_PROJECT_ID,NEXT_PUBLIC_FIREBASE_APP_ID,FIREBASE_SERVICE_ACCOUNT_BASE64,STRIPE_SECRET_KEY,STRIPE_PRICE_ID,STRIPE_WEBHOOK_SECRET,SONGTWIN_ADMIN_CODE_HASH)
 
-Required production environment variables:
+Required production environment variables for paid access:
 
 ```bash
-SPOTIFY_CLIENT_ID=your_spotify_client_id
 SESSION_SECRET=your_long_random_secret
 SONGTWIN_GRAPH_API_KEY=optional_expanded_graph_api_key
 MUSICBRAINZ_USER_AGENT=SongTwin/0.1 (you@example.com)
@@ -102,6 +102,13 @@ STRIPE_SECRET_KEY=sk_live_or_test_key
 STRIPE_PRICE_ID=price_recurring_499_monthly
 STRIPE_WEBHOOK_SECRET=whsec_from_stripe_webhook
 SONGTWIN_ADMIN_CODE_HASH=sha256_hash_of_private_admin_code
+```
+
+Optional production variables for Spotify playlist import:
+
+```bash
+SPOTIFY_CLIENT_ID=your_spotify_client_id
+SPOTIFY_REDIRECT_URI=https://your-domain.example/api/auth/callback
 ```
 
 SongTwin uses Stripe-hosted Checkout. A Stripe publishable key is not required for this redirect flow because the server creates the Checkout Session and returns Stripe's hosted checkout URL.

@@ -267,7 +267,7 @@ export function AuthGate({ children, requireSubscription = true }: AuthGateProps
       <AuthFrame
         icon={<Sparkles size={22} />}
         title={mode === "signup" ? "Create your SongTwin account" : "Sign in to SongTwin"}
-        subtitle="Subscribe once, then connect Spotify to build recommendations from SongTwin's multi-source music algorithm."
+        subtitle="Subscribe once, then search songs immediately. Spotify is optional and only needed for playlist import."
       >
         <form className="mt-6 grid gap-3" onSubmit={handleAuth}>
           <label className="grid gap-2 text-sm font-semibold text-[#d8d8d8]">
@@ -407,6 +407,7 @@ function SubscribeScreen({
             <Link className="hover:text-white" href="/#home">Home</Link>
             <Link className="hover:text-white" href="/#about">About</Link>
             <Link className="hover:text-white" href="/#pricing">Pricing</Link>
+            <Link className="hover:text-white" href="/#faq">FAQ</Link>
             <Link className="hover:text-white" href="/#contact">Contact</Link>
           </nav>
           <AccountSettingsStrip
@@ -428,10 +429,10 @@ function SubscribeScreen({
               Start with 3 days free.
             </h1>
             <p className="mt-5 max-w-2xl text-lg leading-8 text-[#b3b3b3]">
-              Connect Spotify, choose playlists or songs, and find recommendations ranked by the SongTwin multi-source music algorithm. Checkout opens on Stripe, and your first charge starts after the trial.
+              Search songs without Spotify, or connect Spotify later to import playlists and liked songs. Checkout opens on Stripe, and your first charge starts after the trial.
             </p>
             <div className="mt-7 grid gap-3 sm:grid-cols-3">
-              {["3-day free trial", "Spotify playlist and song seeds", "Direct Spotify links for every match"].map(
+              {["3-day free trial", "Song search without Spotify", "Optional Spotify playlist import"].map(
                 (item) => (
                   <div className="rounded-lg border border-[#242424] bg-[#121212] p-4" key={item}>
                     <CheckCircle2 className="text-[#1db954]" size={18} />
@@ -506,6 +507,7 @@ function AuthFrame({
             <Link className="hover:text-white" href="/#home">Home</Link>
             <Link className="hover:text-white" href="/#about">About</Link>
             <Link className="hover:text-white" href="/#pricing">Pricing</Link>
+            <Link className="hover:text-white" href="/#faq">FAQ</Link>
             <Link className="hover:text-white" href="/#contact">Contact</Link>
           </nav>
           <Link className="connect-button secondary min-h-10 px-4 text-sm md:justify-self-end" href="/">

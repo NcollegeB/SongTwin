@@ -78,6 +78,36 @@ export async function findMusicBrainzRecordingMbid(values: {
   return exact?.id ?? recordings[0]?.id ?? null;
 }
 
+export async function searchMusicBrainzTracks(query: string, limit = 10) {
+  const params = new URLSearchParams({
+    query,
+    fmt: "json",
+    limit: String(Math.max(1, Math.min(limit, 20))),
+  });
+
+  const response = await fetch(`https://musicbrainz.org/ws/2/recording/?${params}`, {
+    headers: {
+      "User-Agent": process.env.MUSICBRAINZ_USER_AGENT || "SongTwin/0.1 (local development)",
+    },
+    next: { revalidate: 60 * 60 * 24 * 7 },
+  });
+
+  if (!response.ok) {
+    return [];
+  }
+
+  const data = (await response.json()) as MusicBrainzSearchResponse;
+
+  return (data.recordings ?? [])
+    .map((recording) => ({
+      name: recording.title ?? "",
+      artistName:
+        recording["artist-credit"]?.map((artist) => artist.name).filter(Boolean).join(", ") ?? "",
+      sourceUrl: recording.id ? `https://musicbrainz.org/recording/${recording.id}` : undefined,
+    }))
+    .filter((track) => Boolean(track.name && track.artistName));
+}
+
 export async function getListenBrainzSimilarTracks(seedMbids: string[]) {
   if (seedMbids.length === 0) {
     return [];

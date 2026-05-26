@@ -1,6 +1,7 @@
 import { searchBestTrack } from "./spotify";
 import { expandedGraphConfigured, getSimilarTracks } from "./lastfm";
 import { findMusicBrainzRecordingMbid, getListenBrainzSimilarTracks } from "./listenbrainz";
+import { spotifySearchUrl } from "./public-catalog";
 import { primaryArtist, samePrimaryArtist, trackKey } from "./track-utils";
 import type { RecommendationResponse, SimplifiedTrack, SpotifyTokenSession } from "./types";
 
@@ -31,7 +32,7 @@ const MAX_RECOMMENDATION_SEEDS = 20;
 const MAX_LISTENBRAINZ_SEEDS = 4;
 
 export async function recommendFromSeeds(
-  session: SpotifyTokenSession,
+  session: SpotifyTokenSession | null,
   seedTracks: SimplifiedTrack[],
   options: RecommendationOptions = {},
 ): Promise<RecommendationResponse> {
@@ -61,7 +62,7 @@ export async function recommendFromSeeds(
           provider: "standard",
           expandedGraphConfigured: false,
           seedsAnalyzed: Math.min(seeds.length, MAX_LISTENBRAINZ_SEEDS),
-          spotifyMatches: listenBrainz.filter((track) => track.matchedOnSpotify).length,
+          spotifyMatches: linkedTrackCount(listenBrainz),
           notes: ["Using SongTwin's standard public music graph for this run."],
         },
       };
@@ -127,7 +128,7 @@ export async function recommendFromSeeds(
           provider: "standard",
           expandedGraphConfigured: true,
           seedsAnalyzed: Math.min(seeds.length, MAX_LISTENBRAINZ_SEEDS),
-          spotifyMatches: listenBrainz.filter((track) => track.matchedOnSpotify).length,
+          spotifyMatches: linkedTrackCount(listenBrainz),
           notes: [
             "SongTwin used its public music graph after the expanded graph returned no strong cross-artist candidates.",
           ],
@@ -160,14 +161,18 @@ export async function recommendFromSeeds(
       provider: "expanded",
       expandedGraphConfigured: true,
       seedsAnalyzed: seeds.length,
-      spotifyMatches: recommendations.filter((track) => track.matchedOnSpotify).length,
+      spotifyMatches: linkedTrackCount(recommendations),
       notes,
     },
   };
 }
 
+function linkedTrackCount(recommendations: Array<{ id?: string; spotifyUrl?: string }>) {
+  return recommendations.filter((track) => Boolean(track.id || track.spotifyUrl)).length;
+}
+
 async function listenBrainzRecommendations(
-  session: SpotifyTokenSession,
+  session: SpotifyTokenSession | null,
   seeds: SimplifiedTrack[],
   limit: number,
 ) {
@@ -233,7 +238,7 @@ async function listenBrainzRecommendations(
 }
 
 async function buildRecommendations(
-  session: SpotifyTokenSession,
+  session: SpotifyTokenSession | null,
   bucketMap: Map<string, CandidateBucket>,
   seeds: SimplifiedTrack[],
   limit: number,
@@ -250,10 +255,12 @@ async function buildRecommendations(
 
   const mapped = await Promise.all(
     rankedBuckets.slice(0, Math.max(limit * 2, 30)).map(async (bucket) => {
-      const spotifyTrack = await searchBestTrack(session, {
-        name: bucket.name,
-        artistName: bucket.artistName,
-      }).catch(() => null);
+      const spotifyTrack = session
+        ? await searchBestTrack(session, {
+            name: bucket.name,
+            artistName: bucket.artistName,
+          }).catch(() => null)
+        : null;
       return { bucket, spotifyTrack };
     }),
   );
@@ -266,6 +273,7 @@ async function buildRecommendations(
         name: bucket.name,
         artistName: bucket.artistName,
         imageUrl: bucket.imageUrl,
+        spotifyUrl: spotifySearchUrl(bucket),
         sourceUrl: bucket.sourceUrl,
       };
 
