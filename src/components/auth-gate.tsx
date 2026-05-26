@@ -20,6 +20,7 @@ import {
 import type { FormEvent, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AccountSettingsStrip } from "./account-settings-strip";
+import { accountRequest } from "@/lib/account-client";
 import { firebaseClientConfigured, getFirebaseClientAuth } from "@/lib/firebase-client";
 import type { AccountResponse } from "@/lib/types";
 
@@ -60,25 +61,6 @@ export function AuthGate({ children, requireSubscription = true }: AuthGateProps
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const accountRequest = useCallback(async function accountRequest<T>(
-    path: string,
-    currentUser: User,
-    init?: RequestInit,
-  ) {
-    const token = await currentUser.getIdToken();
-    const headers = new Headers(init?.headers);
-    headers.set("Authorization", `Bearer ${token}`);
-
-    const response = await fetch(path, { ...init, headers });
-    const payload = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-      throw new Error(payload.error || `Request failed: ${response.status}`);
-    }
-
-    return payload as T;
-  }, []);
-
   const loadAccount = useCallback(async function loadAccount(currentUser: User, forceRefresh = false) {
     if (forceRefresh) {
       await currentUser.getIdToken(true);
@@ -87,7 +69,7 @@ export function AuthGate({ children, requireSubscription = true }: AuthGateProps
     const payload = await accountRequest<AccountResponse>("/api/account", currentUser);
     setAccount(payload);
     return payload;
-  }, [accountRequest]);
+  }, []);
 
   useEffect(() => {
     if (!auth) {

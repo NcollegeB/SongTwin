@@ -2,7 +2,7 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:
 import type { NextRequest, NextResponse } from "next/server";
 import type { SpotifyTokenSession } from "./types";
 
-export const SESSION_COOKIE = "song_twin_spotify_session";
+const SESSION_COOKIE = "song_twin_spotify_session";
 export const AUTH_STATE_COOKIE = "song_twin_spotify_state";
 export const AUTH_VERIFIER_COOKIE = "song_twin_spotify_verifier";
 
@@ -42,7 +42,7 @@ function fromBase64Url(value: string) {
   return Buffer.from(value, "base64url");
 }
 
-export function encryptSession(session: SpotifyTokenSession) {
+function encryptSession(session: SpotifyTokenSession) {
   const iv = randomBytes(12);
   const cipher = createCipheriv("aes-256-gcm", key(), iv);
   const encrypted = Buffer.concat([
@@ -54,7 +54,7 @@ export function encryptSession(session: SpotifyTokenSession) {
   return `v1.${base64Url(iv)}.${base64Url(tag)}.${base64Url(encrypted)}`;
 }
 
-export function decryptSession(value?: string) {
+function decryptSession(value?: string) {
   if (!value) {
     return null;
   }

@@ -82,7 +82,7 @@ export type SubscriptionStatus =
   | "paused"
   | "inactive";
 
-export type AccountSubscription = {
+type AccountSubscription = {
   active: boolean;
   status: SubscriptionStatus;
   currentPeriodEnd?: string;

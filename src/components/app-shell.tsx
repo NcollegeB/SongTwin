@@ -103,6 +103,7 @@ export function AppShell({ accountSettings, getAccountToken }: AppShellProps = {
     useState<RecommendationResponse["sourceSummary"]>(initialSummary);
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<SimplifiedTrack[]>([]);
+  const [loadingPlaylists, setLoadingPlaylists] = useState(false);
   const [loadingTracks, setLoadingTracks] = useState(false);
   const [searching, setSearching] = useState(false);
   const [running, setRunning] = useState(false);
@@ -258,9 +259,6 @@ export function AppShell({ accountSettings, getAccountToken }: AppShellProps = {
 
       setRecommendations([]);
       setSourceSummary(idleSummary(data.expandedGraphConfigured));
-      const playlistPayload = await fetchJson<{ playlists: PlaylistSummary[] }>("/api/playlists");
-      setPlaylists(playlistPayload.playlists);
-      await loadFirstAvailablePlaylist(playlistPayload.playlists);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to load your Spotify account.");
     } finally {
@@ -277,6 +275,31 @@ export function AppShell({ accountSettings, getAccountToken }: AppShellProps = {
     }
 
     setError("Spotify denied the first few playlist track lists. Try searching for a song instead.");
+  }
+
+  async function loadSpotifyLibrary() {
+    if (!connected || loadingPlaylists || playlists.length > 0) {
+      return;
+    }
+
+    setLoadingPlaylists(true);
+    setError(null);
+
+    try {
+      const playlistPayload = await fetchJson<{ playlists: PlaylistSummary[] }>("/api/playlists");
+      setPlaylists(playlistPayload.playlists);
+
+      if (playlistPayload.playlists.length === 0) {
+        setError("No readable Spotify playlists were found on this account.");
+        return;
+      }
+
+      await loadFirstAvailablePlaylist(playlistPayload.playlists);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to load Spotify playlists.");
+    } finally {
+      setLoadingPlaylists(false);
+    }
   }
 
   async function loadPlaylistTracks(playlistId: string, forceLive = false, quiet = false) {
@@ -317,7 +340,7 @@ export function AppShell({ accountSettings, getAccountToken }: AppShellProps = {
     }
   }
 
-  async function searchSpotify(event: FormEvent<HTMLFormElement>) {
+  async function searchSongs(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!searchTerm.trim()) {
       setSearchResults([]);
@@ -460,6 +483,7 @@ export function AppShell({ accountSettings, getAccountToken }: AppShellProps = {
                 onClick={() => {
                   setMode("playlist");
                   resetRecommendationState();
+                  void loadSpotifyLibrary();
                 }}
                 type="button"
               >
@@ -515,6 +539,7 @@ export function AppShell({ accountSettings, getAccountToken }: AppShellProps = {
                 </label>
                 <select
                   className="h-11 w-full rounded-lg border border-[#2a2a2a] bg-[#242424] px-3 text-sm font-medium text-white outline-none transition hover:bg-[#2a2a2a] focus:border-[#1db954]"
+                  disabled={loadingPlaylists || playlists.length === 0}
                   id="playlist"
                   value={selectedPlaylistId}
                   onChange={(event) => void loadPlaylistTracks(event.target.value)}
@@ -527,7 +552,7 @@ export function AppShell({ accountSettings, getAccountToken }: AppShellProps = {
                 </select>
 
                 <PlaylistPreview
-                  loading={loadingTracks}
+                  loading={loadingPlaylists || loadingTracks}
                   onRandomize={randomizePlaylistSeeds}
                   playlist={selectedPlaylist}
                   seedCount={sourceSeedCount}
@@ -538,7 +563,7 @@ export function AppShell({ accountSettings, getAccountToken }: AppShellProps = {
               </div>
             ) : (
               <div className="flex h-full min-h-0 flex-col">
-                <form className="relative" onSubmit={searchSpotify}>
+                <form className="relative" onSubmit={searchSongs}>
                   <label className="sr-only" htmlFor="song-search">
                     Search for a song
                   </label>

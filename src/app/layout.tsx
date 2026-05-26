@@ -13,9 +13,24 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://song-twin.vercel.app"),
   title: "SongTwin - Find your next perfect song",
   description:
     "A multi-source song discovery app that helps you find tracks that fit the music you already love.",
+  openGraph: {
+    title: "SongTwin - Find your next perfect song",
+    description:
+      "Search from a song you already love and get ranked music matches from SongTwin's multi-source discovery algorithm.",
+    siteName: "SongTwin",
+    type: "website",
+    url: "/",
+  },
+  twitter: {
+    card: "summary",
+    title: "SongTwin - Find your next perfect song",
+    description:
+      "Search from a song you already love and get ranked music matches from SongTwin's multi-source discovery algorithm.",
+  },
 };
 
 export default function RootLayout({

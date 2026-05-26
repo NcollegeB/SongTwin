@@ -3,8 +3,9 @@
 import { onAuthStateChanged, signOut as firebaseSignOut, type User } from "firebase/auth";
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AccountSettingsStrip } from "./account-settings-strip";
+import { accountRequest } from "@/lib/account-client";
 import { firebaseClientConfigured, getFirebaseClientAuth } from "@/lib/firebase-client";
 import type { AccountResponse } from "@/lib/types";
 
@@ -16,25 +17,6 @@ export function LandingAccountNav() {
   const [user, setUser] = useState<User | null>(null);
   const [ready, setReady] = useState(!configured);
   const [submitting, setSubmitting] = useState(false);
-
-  const accountRequest = useCallback(async function accountRequest<T>(
-    path: string,
-    currentUser: User,
-    init?: RequestInit,
-  ) {
-    const token = await currentUser.getIdToken();
-    const headers = new Headers(init?.headers);
-    headers.set("Authorization", `Bearer ${token}`);
-
-    const response = await fetch(path, { ...init, headers });
-    const payload = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-      throw new Error(payload.error || `Request failed: ${response.status}`);
-    }
-
-    return payload as T;
-  }, []);
 
   useEffect(() => {
     if (!auth) {
@@ -57,7 +39,7 @@ export function LandingAccountNav() {
         .catch(() => setAccount(null))
         .finally(() => setAccountLoading(false));
     });
-  }, [accountRequest, auth]);
+  }, [auth]);
 
   async function signOut() {
     if (auth) {

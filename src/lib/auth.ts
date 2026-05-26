@@ -3,7 +3,7 @@ import { clearSessionCookie, getSessionFromRequest, setSessionCookie } from "./s
 import { refreshSpotifySession, SpotifyApiError } from "./spotify";
 import type { SpotifyTokenSession } from "./types";
 
-export class AuthError extends Error {
+class AuthError extends Error {
   status: number;
 
   constructor(message: string, status = 401) {

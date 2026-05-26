@@ -1,7 +1,7 @@
 import { searchBestTrack } from "./spotify";
 import { expandedGraphConfigured, getSimilarTracks } from "./lastfm";
 import { findMusicBrainzRecordingMbid, getListenBrainzSimilarTracks } from "./listenbrainz";
-import { spotifySearchUrl } from "./public-catalog";
+import { findPublicCatalogTrack, spotifySearchUrl } from "./public-catalog";
 import { primaryArtist, samePrimaryArtist, trackKey } from "./track-utils";
 import type { RecommendationResponse, SimplifiedTrack, SpotifyTokenSession } from "./types";
 
@@ -261,15 +261,22 @@ async function buildRecommendations(
             artistName: bucket.artistName,
           }).catch(() => null)
         : null;
-      return { bucket, spotifyTrack };
+      const publicTrack = !session
+        ? await findPublicCatalogTrack({
+            name: bucket.name,
+            artistName: bucket.artistName,
+          }).catch(() => null)
+        : null;
+
+      return { bucket, publicTrack, spotifyTrack };
     }),
   );
 
   return mapped
-    .map(({ bucket, spotifyTrack }) => {
+    .map(({ bucket, publicTrack, spotifyTrack }) => {
       const normalizedScore = Math.round((bucket.score / maxScore) * 100);
       const support = Math.max(bucket.supportSeeds.size, 1);
-      const track = spotifyTrack ?? {
+      const track = spotifyTrack ?? publicTrack ?? {
         name: bucket.name,
         artistName: bucket.artistName,
         imageUrl: bucket.imageUrl,
@@ -279,7 +286,7 @@ async function buildRecommendations(
 
       return {
         ...track,
-        sourceUrl: bucket.sourceUrl,
+        sourceUrl: bucket.sourceUrl ?? track.sourceUrl,
         score: normalizedScore,
         confidence: Math.min(
           options.maxConfidence,

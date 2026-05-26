@@ -1,6 +1,6 @@
 import { normalizeTrackText, primaryArtist } from "./track-utils";
 
-export type ListenBrainzSimilarTrack = {
+type ListenBrainzSimilarTrack = {
   name: string;
   artistName: string;
   score: number;

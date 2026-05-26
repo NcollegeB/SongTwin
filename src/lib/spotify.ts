@@ -111,7 +111,7 @@ export function generateState() {
   return randomBytes(24).toString("base64url");
 }
 
-export function challengeForVerifier(verifier: string) {
+function challengeForVerifier(verifier: string) {
   return createHash("sha256").update(verifier).digest("base64url");
 }
 
@@ -193,7 +193,7 @@ function tokenToSession(token: TokenResponse): SpotifyTokenSession {
   };
 }
 
-export async function spotifyFetch<T>(
+async function spotifyFetch<T>(
   session: SpotifyTokenSession,
   pathOrUrl: string,
   init?: RequestInit,
@@ -388,7 +388,7 @@ export async function searchBestTrack(
   );
 }
 
-export function simplifyTrack(track: SpotifyTrack): SimplifiedTrack {
+function simplifyTrack(track: SpotifyTrack): SimplifiedTrack {
   const firstArtist = track.artists?.[0];
 
   return {

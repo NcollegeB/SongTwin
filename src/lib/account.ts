@@ -12,10 +12,6 @@ function configuredAdminCodeHash() {
   return process.env.SONGTWIN_ADMIN_CODE_HASH?.trim().toLowerCase();
 }
 
-function configuredAdminCode() {
-  return process.env.SONGTWIN_ADMIN_CODE?.trim();
-}
-
 function sha256Hex(value: string) {
   return createHash("sha256").update(value).digest("hex");
 }
@@ -33,15 +29,10 @@ function adminCodeMatches(code: string) {
     return safeEqual(sha256Hex(code), codeHash);
   }
 
-  const plainCode = configuredAdminCode();
-  if (plainCode) {
-    return safeEqual(sha256Hex(code), sha256Hex(plainCode));
-  }
-
   throw new AccountAccessError("Admin code is not configured", 503);
 }
 
-export class AccountAccessError extends Error {
+class AccountAccessError extends Error {
   status: number;
 
   constructor(message: string, status = 401) {
@@ -71,7 +62,7 @@ function bearerToken(request: NextRequest) {
   return header.slice("Bearer ".length).trim();
 }
 
-export function subscriptionIsActive(status?: string) {
+function subscriptionIsActive(status?: string) {
   return ACTIVE_STATUSES.has((status ?? "inactive") as SubscriptionStatus);
 }
 

@@ -1,8 +1,0 @@
-.env*
-.git
-.next
-.vercel
-coverage
-node_modules
-npm-debug.log*
-README.md
