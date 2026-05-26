@@ -15,6 +15,7 @@ SongTwin is a consumer song discovery web app for finding tracks that fit a play
 - Fall back to a standard public music graph when the expanded graph is not configured.
 - Map recommendation candidates back to Spotify when connected, with Spotify search and YouTube links available for public-catalog results.
 - Privacy, Terms, Contact, FAQ, and launch-ready pricing copy.
+- Sitemap, robots.txt, canonical metadata, Open Graph metadata, and product structured data for SEO.
 - Clear empty states when strong cross-artist fit signals are unavailable.
 
 ## API Reality
@@ -54,6 +55,7 @@ cp .env.example .env.local
 ```bash
 SPOTIFY_CLIENT_ID=your_spotify_client_id
 SPOTIFY_REDIRECT_URI=http://127.0.0.1:3000/api/auth/callback
+NEXT_PUBLIC_SITE_URL=http://127.0.0.1:3000
 SESSION_SECRET=your_long_random_secret
 SONGTWIN_GRAPH_API_KEY=optional_expanded_graph_api_key
 MUSICBRAINZ_USER_AGENT=SongTwin/0.1 (you@example.com)
@@ -85,12 +87,13 @@ npm run dev
 
 SongTwin is a standard Next.js app and can deploy to Vercel from the GitHub repo or the Vercel CLI.
 
-[Deploy from GitHub on Vercel](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FNcollegeB%2FSongTwin&project-name=song-twin&repository-name=SongTwin&env=SPOTIFY_CLIENT_ID,SPOTIFY_REDIRECT_URI,SESSION_SECRET,SONGTWIN_GRAPH_API_KEY,MUSICBRAINZ_USER_AGENT,NEXT_PUBLIC_FIREBASE_API_KEY,NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,NEXT_PUBLIC_FIREBASE_PROJECT_ID,NEXT_PUBLIC_FIREBASE_APP_ID,FIREBASE_SERVICE_ACCOUNT_BASE64,STRIPE_SECRET_KEY,STRIPE_PRICE_ID,STRIPE_WEBHOOK_SECRET,SONGTWIN_ADMIN_CODE_HASH)
+[Deploy from GitHub on Vercel](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FNcollegeB%2FSongTwin&project-name=song-twin&repository-name=SongTwin&env=NEXT_PUBLIC_SITE_URL,SPOTIFY_CLIENT_ID,SPOTIFY_REDIRECT_URI,SESSION_SECRET,SONGTWIN_GRAPH_API_KEY,MUSICBRAINZ_USER_AGENT,NEXT_PUBLIC_FIREBASE_API_KEY,NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,NEXT_PUBLIC_FIREBASE_PROJECT_ID,NEXT_PUBLIC_FIREBASE_APP_ID,FIREBASE_SERVICE_ACCOUNT_BASE64,STRIPE_SECRET_KEY,STRIPE_PRICE_ID,STRIPE_WEBHOOK_SECRET,SONGTWIN_ADMIN_CODE_HASH)
 
 Required production environment variables for paid access:
 
 ```bash
 SESSION_SECRET=your_long_random_secret
+NEXT_PUBLIC_SITE_URL=https://your-domain.example
 SONGTWIN_GRAPH_API_KEY=optional_expanded_graph_api_key
 MUSICBRAINZ_USER_AGENT=SongTwin/0.1 (you@example.com)
 NEXT_PUBLIC_FIREBASE_API_KEY=your_firebase_web_api_key
@@ -109,6 +112,12 @@ Optional production variables for Spotify playlist import:
 ```bash
 SPOTIFY_CLIENT_ID=your_spotify_client_id
 SPOTIFY_REDIRECT_URI=https://your-domain.example/api/auth/callback
+```
+
+`NEXT_PUBLIC_SITE_URL` controls canonical URLs, sitemap URLs, robots.txt, and structured data. Set it to your final production domain after the domain is connected, for example:
+
+```bash
+NEXT_PUBLIC_SITE_URL=https://songtwin.app
 ```
 
 SongTwin uses Stripe-hosted Checkout. A Stripe publishable key is not required for this redirect flow because the server creates the Checkout Session and returns Stripe's hosted checkout URL.
@@ -164,6 +173,7 @@ CLI flow:
 npm i -g vercel
 vercel link
 vercel env add SPOTIFY_CLIENT_ID production
+vercel env add NEXT_PUBLIC_SITE_URL production
 vercel env add SESSION_SECRET production
 vercel env add SONGTWIN_GRAPH_API_KEY production
 vercel env add MUSICBRAINZ_USER_AGENT production
@@ -178,6 +188,22 @@ vercel env add STRIPE_WEBHOOK_SECRET production
 vercel env add SONGTWIN_ADMIN_CODE_HASH production
 vercel deploy --prod
 ```
+
+### Custom domain checklist
+
+1. Buy or connect the domain in Vercel.
+2. Assign it to the `song-twin` Vercel project and set it as the production domain.
+3. Add `NEXT_PUBLIC_SITE_URL=https://your-domain.example` in Vercel Production and Preview env vars.
+4. Add `SPOTIFY_REDIRECT_URI=https://your-domain.example/api/auth/callback` if Spotify playlist import is enabled.
+5. Add `https://your-domain.example/api/auth/callback` in the Spotify Developer Dashboard redirect URI list.
+6. Add the domain in Firebase Authentication authorized domains.
+7. Add or update the Stripe webhook endpoint if you want webhooks on the custom domain:
+
+```text
+https://your-domain.example/api/stripe/webhook
+```
+
+8. Redeploy after environment variable changes.
 
 ### Self-hosted
 

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { ContactBlock, LegalPage } from "@/components/legal-page";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy - SongTwin",
+  title: "Privacy Policy",
   description: "How SongTwin handles account, billing, and music discovery data.",
 };
 

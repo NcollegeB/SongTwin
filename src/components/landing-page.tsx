@@ -21,6 +21,7 @@ import {
   Waves,
 } from "lucide-react";
 import { LandingAccountNav } from "./landing-account-nav";
+import { StructuredData } from "./structured-data";
 
 const albumImages = [
   "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=500&q=80",
@@ -64,6 +65,7 @@ const faqItems = [
 export function LandingPage() {
   return (
     <main className="bg-black text-white">
+      <StructuredData />
       <section className="relative min-h-[92vh] overflow-hidden" id="home">
         <HeroBackdrop />
         <div className="absolute inset-0 bg-black/58" />

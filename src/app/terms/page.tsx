@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { ContactBlock, LegalPage } from "@/components/legal-page";
 
 export const metadata: Metadata = {
-  title: "Terms of Service - SongTwin",
+  title: "Terms of Service",
   description: "Subscription and usage terms for SongTwin.",
 };
 

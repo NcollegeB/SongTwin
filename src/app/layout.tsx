@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { siteConfig } from "@/lib/site";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -13,23 +14,53 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://song-twin.vercel.app"),
-  title: "SongTwin - Find your next perfect song",
-  description:
-    "A multi-source song discovery app that helps you find tracks that fit the music you already love.",
+  metadataBase: new URL(siteConfig.url),
+  applicationName: siteConfig.name,
+  title: {
+    default: siteConfig.title,
+    template: `%s - ${siteConfig.name}`,
+  },
+  description: siteConfig.description,
+  keywords: [...siteConfig.keywords],
+  authors: [{ name: "SongTwin" }],
+  creator: "SongTwin",
+  publisher: "SongTwin",
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
-    title: "SongTwin - Find your next perfect song",
-    description:
-      "Search from a song you already love and get ranked music matches from SongTwin's multi-source discovery algorithm.",
-    siteName: "SongTwin",
+    title: siteConfig.title,
+    description: siteConfig.description,
+    siteName: siteConfig.name,
     type: "website",
     url: "/",
+    locale: "en_US",
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "SongTwin - Find your next perfect song",
+      },
+    ],
   },
   twitter: {
-    card: "summary",
-    title: "SongTwin - Find your next perfect song",
-    description:
-      "Search from a song you already love and get ranked music matches from SongTwin's multi-source discovery algorithm.",
+    card: "summary_large_image",
+    title: siteConfig.title,
+    description: siteConfig.description,
+    images: ["/opengraph-image"],
+  },
+  category: "music",
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
   },
 };
 
