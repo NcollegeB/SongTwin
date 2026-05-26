@@ -120,7 +120,7 @@ export function AppShell({ accountSettings, getAccountToken }: AppShellProps = {
   const playlistNeedsSpotify = mode === "playlist" && !connected;
   const sourceName =
     playlistNeedsSpotify
-      ? "Connect Spotify"
+      ? "Spotify playlist import"
       : mode === "playlist"
       ? selectedPlaylist?.source === "liked"
         ? "Liked Songs"
@@ -132,7 +132,7 @@ export function AppShell({ accountSettings, getAccountToken }: AppShellProps = {
           : `${sourceTracks.length} source songs`;
   const sourceArtist =
     playlistNeedsSpotify
-      ? "Use Spotify for playlist import, or switch to Song search without Spotify"
+      ? "Connect Spotify only if you want to import playlists"
       : mode === "playlist"
       ? selectedPlaylist?.owner ?? "Your library"
       : sourceTracks.length === 0
@@ -489,7 +489,7 @@ export function AppShell({ accountSettings, getAccountToken }: AppShellProps = {
                   href="/api/auth/login?returnTo=/app"
                 >
                   <PlugZap size={16} aria-hidden="true" />
-                  Connect Spotify
+                  Import Spotify playlists
                 </a>
               </div>
             ) : null}
@@ -499,12 +499,14 @@ export function AppShell({ accountSettings, getAccountToken }: AppShellProps = {
             <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center gap-2 text-sm font-semibold text-[#b3b3b3]">
                 <Headphones size={17} aria-hidden="true" />
-                Your Library
+                {mode === "playlist" ? "Your Library" : "Song Search"}
               </div>
-              <span className="text-xs text-[#737373]">{connected ? "Spotify" : "Connect"}</span>
+              <span className="text-xs text-[#737373]">
+                {mode === "playlist" ? (connected ? "Spotify" : "Optional") : "No Spotify needed"}
+              </span>
             </div>
 
-            {!connected ? (
+            {!connected && mode === "playlist" ? (
               <ConnectLibraryPrompt />
             ) : mode === "playlist" ? (
               <div className="flex min-h-0 flex-col gap-3">
