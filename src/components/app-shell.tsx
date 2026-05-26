@@ -21,7 +21,7 @@ import {
   X,
 } from "lucide-react";
 import type { FormEvent, ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   ApiSessionResponse,
   PlaylistSummary,
@@ -103,11 +103,13 @@ export function AppShell({ accountSettings, getAccountToken }: AppShellProps = {
     useState<RecommendationResponse["sourceSummary"]>(initialSummary);
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<SimplifiedTrack[]>([]);
+  const [searchResultsQuery, setSearchResultsQuery] = useState("");
   const [loadingPlaylists, setLoadingPlaylists] = useState(false);
   const [loadingTracks, setLoadingTracks] = useState(false);
   const [searching, setSearching] = useState(false);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const searchRequestId = useRef(0);
 
   const connected = Boolean(session?.connected);
   const selectedPlaylist = playlists.find((playlist) => playlist.id === selectedPlaylistId);
@@ -203,14 +205,27 @@ export function AppShell({ accountSettings, getAccountToken }: AppShellProps = {
 
     const query = searchTerm.trim();
     if (query.length < 2) {
-      window.setTimeout(() => setSearchResults([]), 0);
+      searchRequestId.current += 1;
+      window.setTimeout(() => {
+        setSearchResults([]);
+        setSearchResultsQuery("");
+        setSearching(false);
+      }, 0);
       return;
     }
 
+    const requestId = searchRequestId.current + 1;
+    searchRequestId.current = requestId;
+    const stateTimeout = window.setTimeout(() => {
+      if (searchRequestId.current === requestId) {
+        setSearchResults([]);
+        setSearchResultsQuery(query);
+        setSearching(true);
+      }
+    }, 0);
+
     const controller = new AbortController();
     const timeout = window.setTimeout(async () => {
-      setSearching(true);
-
       try {
         const payload = await fetchJson<{ tracks?: SimplifiedTrack[]; error?: string }>(
           `/api/search?q=${encodeURIComponent(query)}`,
@@ -220,14 +235,17 @@ export function AppShell({ accountSettings, getAccountToken }: AppShellProps = {
         );
 
         const tracks = payload.tracks ?? [];
-        setError(null);
-        setSearchResults(tracks);
+        if (searchRequestId.current === requestId) {
+          setError(null);
+          setSearchResults(tracks);
+          setSearchResultsQuery(query);
+        }
       } catch (caught) {
-        if (!controller.signal.aborted) {
+        if (!controller.signal.aborted && searchRequestId.current === requestId) {
           setError(caught instanceof Error ? caught.message : "Search failed.");
         }
       } finally {
-        if (!controller.signal.aborted) {
+        if (!controller.signal.aborted && searchRequestId.current === requestId) {
           setSearching(false);
         }
       }
@@ -235,6 +253,7 @@ export function AppShell({ accountSettings, getAccountToken }: AppShellProps = {
 
     return () => {
       controller.abort();
+      window.clearTimeout(stateTimeout);
       window.clearTimeout(timeout);
     };
   }, [fetchJson, mode, searchTerm]);
@@ -342,23 +361,37 @@ export function AppShell({ accountSettings, getAccountToken }: AppShellProps = {
 
   async function searchSongs(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!searchTerm.trim()) {
+    const query = searchTerm.trim();
+    if (!query) {
+      searchRequestId.current += 1;
       setSearchResults([]);
+      setSearchResultsQuery("");
       return;
     }
 
+    const requestId = searchRequestId.current + 1;
+    searchRequestId.current = requestId;
     setSearching(true);
+    setSearchResults([]);
+    setSearchResultsQuery(query);
     setError(null);
 
     try {
       const payload = await fetchJson<{ tracks: SimplifiedTrack[] }>(
-        `/api/search?q=${encodeURIComponent(searchTerm.trim())}`,
+        `/api/search?q=${encodeURIComponent(query)}`,
       );
-      setSearchResults(payload.tracks);
+      if (searchRequestId.current === requestId) {
+        setSearchResults(payload.tracks);
+        setSearchResultsQuery(query);
+      }
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Search failed.");
+      if (searchRequestId.current === requestId) {
+        setError(caught instanceof Error ? caught.message : "Search failed.");
+      }
     } finally {
-      setSearching(false);
+      if (searchRequestId.current === requestId) {
+        setSearching(false);
+      }
     }
   }
 
@@ -603,6 +636,7 @@ export function AppShell({ accountSettings, getAccountToken }: AppShellProps = {
                 <SearchResults
                   connected={connected}
                   query={searchTerm}
+                  resultQuery={searchResultsQuery}
                   searching={searching}
                   sourceTracks={sourceTracks}
                   tracks={searchResults}
@@ -936,6 +970,7 @@ function ConnectLibraryPrompt() {
 function SearchResults({
   connected,
   query,
+  resultQuery,
   searching,
   sourceTracks,
   tracks,
@@ -943,6 +978,7 @@ function SearchResults({
 }: {
   connected: boolean;
   query: string;
+  resultQuery: string;
   searching: boolean;
   sourceTracks: SimplifiedTrack[];
   tracks: SimplifiedTrack[];
@@ -950,6 +986,7 @@ function SearchResults({
 }) {
   const trimmedQuery = query.trim();
   const sourceTrackKeys = new Set(sourceTracks.map(songSeedKey));
+  const visibleTracks = trimmedQuery === resultQuery ? tracks : [];
 
   return (
     <section className="mt-3 flex min-h-0 flex-1 flex-col rounded-lg border border-[#242424] bg-[#181818] p-3">
@@ -957,8 +994,8 @@ function SearchResults({
         <div>
           <h2 className="text-sm font-bold">Search Results</h2>
           <p className="mt-0.5 text-xs text-[#a7a7a7]">
-            {tracks.length > 0
-              ? `${tracks.length} songs found`
+            {visibleTracks.length > 0
+              ? `${visibleTracks.length} songs found`
               : connected
                 ? "Search Spotify and public sources"
                 : "Search public music sources"}
@@ -982,14 +1019,14 @@ function SearchResults({
               Searching songs
             </div>
           ) : null}
-          {trimmedQuery.length >= 2 && !searching && tracks.length === 0 ? (
+          {trimmedQuery.length >= 2 && !searching && visibleTracks.length === 0 ? (
             <p className="rounded-lg bg-[#121212] p-3 text-sm text-[#a7a7a7]">No songs found.</p>
           ) : null}
 
-          {tracks.map((track) => (
+          {visibleTracks.map((track, index) => (
             <SearchResultRow
               added={sourceTrackKeys.has(songSeedKey(track))}
-              key={`${track.id}-${track.name}`}
+              key={`${songSeedKey(track)}-${track.id ?? track.spotifyUrl ?? track.sourceUrl ?? index}`}
               track={track}
               onAdd={onAdd}
             />
