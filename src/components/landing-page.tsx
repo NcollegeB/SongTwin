@@ -182,7 +182,7 @@ export function LandingPage() {
             <div className="mt-8 grid gap-4 sm:grid-cols-3">
               <Feature icon={<Heart size={20} />} title="Start with taste" text="Use a song that already matches your mood, with playlist import available when Spotify is connected." />
               <Feature icon={<Compass size={20} />} title="Go past obvious" text="Surface tracks from a broader algorithm, not just artist catalog filler." />
-              <Feature icon={<Headphones size={20} />} title="Play it fast" text="Open matched songs in Spotify and keep building from what works." />
+              <Feature icon={<Headphones size={20} />} title="Play it fast" text="Open matched songs in Spotify or YouTube and keep building from what works." />
             </div>
           </div>
 
