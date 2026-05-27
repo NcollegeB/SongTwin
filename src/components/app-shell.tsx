@@ -1173,10 +1173,10 @@ function RecommendationRow({
         <div className="flex flex-wrap items-center gap-2">
           <span className={signalClass(track.signal)}>{signalLabel(track.signal)}</span>
           <span className="text-xs text-[#a7a7a7]">
-            {track.support} source match{track.support === 1 ? "" : "es"}
+            {track.support} source signal{track.support === 1 ? "" : "s"}
           </span>
         </div>
-        <p className="mt-1 truncate text-xs text-[#737373]">Near {track.seedNames.slice(0, 3).join(", ")}</p>
+        <p className="mt-1 truncate text-xs text-[#737373]">{seedFitLabel(track)}</p>
       </div>
 
       <div className="flex items-center justify-between gap-3 md:justify-end">
@@ -1425,6 +1425,8 @@ function signalLabel(signal: Recommendation["signal"]) {
     case "expanded-graph":
     case "standard-graph":
       return "Audience match";
+    case "catalog-proximity":
+      return "Closest fit";
   }
 }
 
@@ -1434,7 +1436,23 @@ function signalClass(signal: Recommendation["signal"]) {
     case "expanded-graph":
     case "standard-graph":
       return `${base} bg-[#1db954] text-black`;
+    case "catalog-proximity":
+      return `${base} bg-[#b7f7cb] text-black`;
   }
+}
+
+function seedFitLabel(track: Recommendation) {
+  const seeds = track.seedNames.slice(0, 3);
+
+  if (seeds.length === 0) {
+    return "Closest catalog fit";
+  }
+
+  if (track.support > 1) {
+    return `Fits ${seeds.join(" + ")}${track.seedNames.length > seeds.length ? " +" : ""}`;
+  }
+
+  return `Near ${seeds[0]}`;
 }
 
 function emptyRecommendationMessage(

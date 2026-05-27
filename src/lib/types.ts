@@ -45,7 +45,7 @@ export type Recommendation = SimplifiedTrack & {
   score: number;
   confidence: number;
   support: number;
-  signal: "expanded-graph" | "standard-graph";
+  signal: "expanded-graph" | "standard-graph" | "catalog-proximity";
   reason: string;
   seedNames: string[];
   matchedOnSpotify: boolean;

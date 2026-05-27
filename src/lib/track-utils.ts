@@ -4,7 +4,12 @@ export type TrackIdentity = {
 };
 
 export function primaryArtist(artistName: string) {
-  return artistName.split(",")[0]?.trim() || artistName;
+  return (
+    artistName
+      .split(",")[0]
+      ?.split(/\s+(?:feat\.?|ft\.?|featuring|with)\s+/i)[0]
+      ?.trim() || artistName
+  );
 }
 
 export function normalizeTrackText(value: string) {
